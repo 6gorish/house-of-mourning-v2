@@ -1,0 +1,35 @@
+{
+  "site": {
+    "title": "The House of Mourning",
+    "description": "An interactive art installation revealing the hidden interconnectedness of human grief through a constellation of individual messages.",
+    "url": "https://houseofmourning.art",
+    "keywords": ["grief", "mourning", "art installation", "Denver", "Truss House", "interactive art", "memorial"],
+    "author": "Two Flaneurs - Lee Knight & VI Gorish",
+    "language": "en"
+  },
+  "exhibition": {
+    "dates": "December 19-20, 2025",
+    "location": "Truss House at RiNo Art Park",
+    "address": "3400 Arkins Ct, Denver, CO 80216",
+    "admission": "Free and open to the public"
+  },
+  "contact": {
+    "email": "twoflaneurs.com@gmail.com",
+    "leeKnight": {
+      "email": "lee@twoflaneurs.com"
+    },
+    "viGorish": {
+      "email": "vig@twoflaneurs.com"
+    }
+  },
+  "social": {
+    "hashtag": "#TheHouseOfMourning",
+    "instagram": "",
+    "twitter": "",
+    "facebook": ""
+  },
+  "analytics": {
+    "vercel": true,
+    "plausible": false
+  }
+}

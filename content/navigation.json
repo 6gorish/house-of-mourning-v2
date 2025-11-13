@@ -1,0 +1,44 @@
+{
+  "navigation": [
+    {
+      "label": "Home",
+      "href": "/",
+      "order": 1
+    },
+    {
+      "label": "About",
+      "href": "/about",
+      "order": 2
+    },
+    {
+      "label": "Artists",
+      "href": "/artists",
+      "order": 3
+    },
+    {
+      "label": "Event",
+      "href": "/event",
+      "order": 4
+    },
+    {
+      "label": "Share Your Grief",
+      "href": "/participate",
+      "order": 5,
+      "highlight": true
+    }
+  ],
+  "footer": [
+    {
+      "label": "Contact",
+      "href": "mailto:twoflaneurs.com@gmail.com"
+    },
+    {
+      "label": "Press",
+      "href": "/press"
+    },
+    {
+      "label": "Privacy",
+      "href": "/privacy"
+    }
+  ]
+}

@@ -1,0 +1,112 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: theme('colors.stone.50');
+    --foreground: theme('colors.stone.900');
+    --muted: theme('colors.stone.500');
+    --border: theme('colors.stone.200');
+    --accent: theme('colors.sky.600');
+  }
+
+  html {
+    @apply antialiased;
+    @apply scroll-smooth;
+  }
+
+  body {
+    @apply bg-stone-50 text-stone-900;
+    @apply font-light;
+  }
+
+  /* Ensure smooth font rendering */
+  * {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+}
+
+@layer utilities {
+  .transition-elegant {
+    transition-property: all;
+    transition-timing-function: cubic-bezier(0.4, 0.0, 0.2, 1);
+    transition-duration: 300ms;
+  }
+
+  .transition-smooth {
+    transition-property: all;
+    transition-timing-function: cubic-bezier(0.4, 0.0, 0.2, 1);
+    transition-duration: 200ms;
+  }
+
+  /* Text balance for headings */
+  .text-balance {
+    text-wrap: balance;
+  }
+}
+
+@layer components {
+  /* Navigation link style */
+  .nav-link {
+    @apply text-base font-normal text-stone-600;
+    @apply hover:text-sky-700;
+    @apply transition-smooth;
+  }
+
+  /* Logo style */
+  .nav-logo {
+    @apply text-2xl md:text-3xl font-light tracking-tight;
+    @apply text-stone-900 hover:text-sky-700;
+    @apply transition-smooth;
+  }
+
+  /* Primary button */
+  .btn-primary {
+    @apply px-10 md:px-12 py-3 md:py-4;
+    @apply bg-stone-800 hover:bg-stone-900;
+    @apply text-stone-50 text-sm md:text-base;
+    @apply font-normal tracking-wide uppercase;
+    @apply transition-elegant;
+    @apply focus:ring-2 focus:ring-stone-600 focus:ring-opacity-50;
+    @apply hover:scale-[1.02];
+    @apply inline-block text-center;
+  }
+
+  /* Secondary button */
+  .btn-secondary {
+    @apply px-8 md:px-10 py-2.5 md:py-3;
+    @apply border border-stone-300 hover:border-sky-600;
+    @apply text-stone-700 hover:text-sky-700;
+    @apply text-sm md:text-base;
+    @apply font-normal tracking-wide uppercase;
+    @apply transition-elegant;
+    @apply focus:ring-2 focus:ring-sky-500 focus:ring-opacity-50;
+    @apply inline-block text-center;
+  }
+
+  /* Page section */
+  .page-section {
+    @apply py-24 md:py-32 px-6 md:px-12;
+    @apply max-w-6xl mx-auto;
+  }
+
+  /* Hero section */
+  .hero-section {
+    @apply text-center;
+    @apply py-32 md:py-40 px-6 md:px-12;
+  }
+}
+
+/* Respect motion preferences */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
