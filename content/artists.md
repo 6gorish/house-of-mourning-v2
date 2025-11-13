@@ -26,7 +26,7 @@ Lee Knight is a multidisciplinary artist and curator working at the intersection
 ## Sam Grabowska
 *Visual Artist*
 
-[Bio to be added]
+Sam Grabowska (b.1982 San Diego, CA, USA) is a multidisciplinary artist living and working in Denver, Colorado, USA. Working predominantly in sculpture, their installations aim to reconstruct the body after emotional trauma. Grabowska has exhibited their work in museums and galleries across the US and Sweden including the Boulder Museum of Contemporary Art, the Denver Art Museum, SOO Visual Art Center, and Rejmyre Art Lab. Their work has been reviewed in The Denver Post and Southwest Contemporary, among others. They hold a PhD in architecture with a cognate in cultural anthropology, an MH in interdisciplinary humanities, a BFA in film, and a BA in environmental design. Grabowska is the founder of Manifolding Labs, a research and consulting firm focusing on trauma-responsive spatial design.
 
 ---
 

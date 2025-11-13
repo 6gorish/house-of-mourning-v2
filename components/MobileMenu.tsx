@@ -60,14 +60,14 @@ export default function MobileMenu() {
           animation: 'slideInRight 300ms cubic-bezier(0.4, 0.0, 0.2, 1)'
         }}
       >
-        {/* Close X Button - Exact same specs as hamburger */}
+        {/* Close X Button - Pixel-perfect aligned with hamburger */}
         <button
           onClick={() => setIsOpen(false)}
           style={{
             position: 'absolute',
-            top: '20px', // Matches nav padding
-            right: '20px',
-            padding: '8px', // Exact match
+            top: '16px', // Matches nav py-4 (16px)
+            right: '24px', // Matches nav px-6 (24px)
+            padding: '8px', // Exact match to hamburger
             fontSize: '24px', // Exact match
             lineHeight: '1', // Exact match
             color: '#1c1917', // stone-900 - exact match
