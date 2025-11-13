@@ -158,15 +158,20 @@ export function ShaderBackground() {
     const mesh = new THREE.Mesh(geometry, material)
     scene.add(mesh)
 
-    // Handle resize
+    // Handle resize with iOS viewport fix
     const handleResize = () => {
       if (!renderer || !material) return
       const width = window.innerWidth
-      const height = window.innerHeight
+      // Use visualViewport for iOS, fallback to window.innerHeight
+      const height = window.visualViewport?.height || window.innerHeight
       renderer.setSize(width, height)
       material.uniforms.u_resolution.value.set(width, height)
     }
     window.addEventListener('resize', handleResize)
+    // Also listen to visualViewport changes (iOS Safari address bar)
+    if (window.visualViewport) {
+      window.visualViewport.addEventListener('resize', handleResize)
+    }
 
     // Animation loop
     let animationFrameId: number
@@ -181,6 +186,9 @@ export function ShaderBackground() {
     // Cleanup
     return () => {
       window.removeEventListener('resize', handleResize)
+      if (window.visualViewport) {
+        window.visualViewport.removeEventListener('resize', handleResize)
+      }
       cancelAnimationFrame(animationFrameId)
 
       if (renderer) {

@@ -1,6 +1,8 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { Inter, Playfair_Display, Cormorant_Garamond, EB_Garamond, Cinzel, Bodoni_Moda } from 'next/font/google';
+import DesktopNav from '@/components/DesktopNav';
+import MobileMenu from '@/components/MobileMenu';
 import './globals.css';
 
 const inter = Inter({
@@ -86,26 +88,11 @@ export default function RootLayout({
                 </span>
               </Link>
 
-              {/* Nav links - desktop */}
-              <div className="hidden md:flex items-center gap-8">
-                <Link href="/about" className="nav-link">
-                  About
-                </Link>
-                <Link href="/artists" className="nav-link">
-                  Artists
-                </Link>
-                <Link href="/event" className="nav-link">
-                  Event
-                </Link>
-                <Link href="/participate" className="btn-primary">
-                  Share Your Grief
-                </Link>
-              </div>
-
-              {/* Mobile menu button */}
-              <button className="md:hidden text-stone-900 hover:text-sky-700 transition-smooth p-2 -mr-2 text-2xl">
-                ☰
-              </button>
+              {/* Desktop Navigation */}
+              <DesktopNav />
+              
+              {/* Mobile Menu Button */}
+              <MobileMenu />
             </div>
           </div>
         </nav>

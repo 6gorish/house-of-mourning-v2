@@ -11,6 +11,13 @@
     --accent: theme('colors.sky.600');
   }
 
+  /* iOS viewport height fix - handles Safari address bar */
+  @supports (height: 100dvh) {
+    .min-h-screen {
+      min-height: 100dvh;
+    }
+  }
+
   html {
     @apply antialiased;
     @apply scroll-smooth;
@@ -60,6 +67,20 @@
 
   .animate-fade-in {
     animation: fade-in 0.8s ease-out;
+  }
+
+  /* Mobile menu slide in animation */
+  @keyframes slide-in {
+    from {
+      transform: translateX(100%);
+    }
+    to {
+      transform: translateX(0);
+    }
+  }
+
+  .animate-slide-in {
+    animation: slide-in 0.3s ease-out;
   }
 }
 
