@@ -16,6 +16,11 @@
     .min-h-screen {
       min-height: 100dvh;
     }
+    
+    /* iOS-safe viewport height for hero sections */
+    .min-h-\[80vh\] {
+      min-height: 80dvh;
+    }
   }
 
   html {

@@ -167,10 +167,23 @@ export function ShaderBackground() {
       renderer.setSize(width, height)
       material.uniforms.u_resolution.value.set(width, height)
     }
+    
+    // iOS Safari: Force resize on scroll to handle address bar
+    let scrollTimeout: NodeJS.Timeout
+    const handleScroll = () => {
+      clearTimeout(scrollTimeout)
+      scrollTimeout = setTimeout(() => {
+        handleResize()
+      }, 100)
+    }
+    
     window.addEventListener('resize', handleResize)
+    window.addEventListener('scroll', handleScroll, { passive: true })
+    
     // Also listen to visualViewport changes (iOS Safari address bar)
     if (window.visualViewport) {
       window.visualViewport.addEventListener('resize', handleResize)
+      window.visualViewport.addEventListener('scroll', handleScroll)
     }
 
     // Animation loop
@@ -186,9 +199,12 @@ export function ShaderBackground() {
     // Cleanup
     return () => {
       window.removeEventListener('resize', handleResize)
+      window.removeEventListener('scroll', handleScroll)
       if (window.visualViewport) {
         window.visualViewport.removeEventListener('resize', handleResize)
+        window.visualViewport.removeEventListener('scroll', handleScroll)
       }
+      clearTimeout(scrollTimeout)
       cancelAnimationFrame(animationFrameId)
 
       if (renderer) {
@@ -206,5 +222,19 @@ export function ShaderBackground() {
     }
   }, [])
 
-  return <div ref={containerRef} className="absolute inset-0 -z-10" />
+  return (
+    <div 
+      ref={containerRef} 
+      style={{
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        width: '100%',
+        height: '100%',
+        minHeight: '100%',
+        zIndex: -10,
+        overflow: 'hidden'
+      }}
+    />
+  )
 }
