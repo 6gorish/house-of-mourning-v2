@@ -1,5 +1,6 @@
 import { getPageContent } from '@/lib/content-loader';
 import type { Metadata } from 'next';
+import PageTransition from '@/components/PageTransition';
 
 export async function generateMetadata(): Promise<Metadata> {
   const content = await getPageContent('about');
@@ -13,9 +14,10 @@ export default async function AboutPage() {
   const content = await getPageContent('about');
 
   return (
-    <main>
-      <section className="py-24 md:py-32 px-6 md:px-12 bg-stone-50">
-        <div className="max-w-4xl mx-auto">
+    <PageTransition>
+      <main>
+      <section className="py-24 md:py-32 bg-stone-50">
+        <div className="max-w-6xl mx-auto px-6 md:px-12">
           <article
             className="prose prose-stone prose-lg max-w-none
                        [&>h1]:text-4xl [&>h1]:md:text-5xl [&>h1]:font-light [&>h1]:tracking-tight [&>h1]:mb-8
@@ -27,5 +29,6 @@ export default async function AboutPage() {
         </div>
       </section>
     </main>
+    </PageTransition>
   );
 }

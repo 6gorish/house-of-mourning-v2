@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import { Inter } from 'next/font/google';
+import { Inter, Playfair_Display, Cormorant_Garamond, EB_Garamond, Cinzel, Bodoni_Moda } from 'next/font/google';
 import './globals.css';
 
 const inter = Inter({
@@ -9,6 +9,47 @@ const inter = Inter({
   variable: '--font-inter',
   display: 'swap',
 });
+
+const playfair = Playfair_Display({
+  subsets: ['latin'],
+  variable: '--font-playfair',
+  weight: ['400', '600', '700'],
+  display: 'swap',
+});
+
+// Logo font options - uncomment ONE to try different styles:
+
+// Option 1: Cormorant Garamond (elegant, refined, literary)
+// const logoFont = Cormorant_Garamond({
+//   subsets: ['latin'],
+//   variable: '--font-logo',
+//   weight: ['300', '400', '600'],
+//   display: 'swap',
+// });
+
+// Option 2: EB Garamond (classic, timeless, book typography)
+// const logoFont = EB_Garamond({
+//   subsets: ['latin'],
+//   variable: '--font-logo',
+//   weight: ['400', '600'],
+//   display: 'swap',
+// });
+
+// Option 3: Cinzel (architectural, formal, Roman inscriptions)
+const logoFont = Cinzel({
+  subsets: ['latin'],
+  variable: '--font-logo',
+  weight: ['400', '600'],
+  display: 'swap',
+});
+
+// Option 4: Bodoni Moda (high contrast, fashion-forward, luxurious)
+// const logoFont = Bodoni_Moda({
+//   subsets: ['latin'],
+//   variable: '--font-logo',
+//   weight: ['400', '600'],
+//   display: 'swap',
+// });
 
 export const metadata: Metadata = {
   title: 'The House of Mourning',
@@ -21,15 +62,28 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" className={inter.variable}>
+    <html lang="en" className={`${inter.variable} ${playfair.variable} ${logoFont.variable}`}>
       <body className="font-sans antialiased">
         {/* Navigation */}
         <nav className="border-b border-stone-200 bg-stone-50/95 backdrop-blur-sm sticky top-0 z-50 transition-elegant">
           <div className="max-w-6xl mx-auto px-6 md:px-12 py-4 md:py-6">
             <div className="flex items-center justify-between">
               {/* Site title */}
-              <Link href="/" className="nav-logo">
-                The House of Mourning
+              <Link 
+                href="/" 
+                className="group relative"
+              >
+                <span className="text-2xl md:text-3xl font-light tracking-tight text-stone-900 
+                               transition-all duration-300 ease-out
+                               group-hover:text-stone-600
+                               relative inline-block"
+                      style={{ fontFamily: 'var(--font-logo)' }}>
+                  The House of Mourning
+                  {/* Elegant underline on hover */}
+                  <span className="absolute bottom-0 left-0 w-0 h-[1px] bg-stone-900 
+                               transition-all duration-500 ease-out
+                               group-hover:w-full"></span>
+                </span>
               </Link>
 
               {/* Nav links - desktop */}
@@ -64,7 +118,7 @@ export default function RootLayout({
             <div className="grid md:grid-cols-2 gap-12 md:gap-16">
               {/* Contact */}
               <div>
-                <h3 className="text-xl md:text-2xl font-light tracking-tight mb-6">Contact</h3>
+                <h3 className="text-xl md:text-2xl font-serif font-light tracking-tight mb-6">Contact</h3>
                 <div className="space-y-2">
                   <p className="text-sm md:text-base text-stone-600 leading-relaxed">
                     Email: <a href="mailto:twoflaneurs.com@gmail.com" className="hover:text-sky-700 transition-smooth">twoflaneurs.com@gmail.com</a>
@@ -77,7 +131,7 @@ export default function RootLayout({
 
               {/* Exhibition Info */}
               <div>
-                <h3 className="text-xl md:text-2xl font-light tracking-tight mb-6">Exhibition</h3>
+                <h3 className="text-xl md:text-2xl font-serif font-light tracking-tight mb-6">Exhibition</h3>
                 <div className="space-y-2">
                   <p className="text-sm md:text-base text-stone-600 leading-relaxed">December 19-20, 2025</p>
                   <p className="text-sm md:text-base text-stone-600 leading-relaxed">

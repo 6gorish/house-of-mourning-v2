@@ -10,6 +10,7 @@ const config: Config = {
     extend: {
       fontFamily: {
         sans: ['var(--font-inter)', 'system-ui', 'sans-serif'],
+        serif: ['var(--font-playfair)', 'Georgia', 'serif'],
       },
       colors: {
         background: 'var(--background)',
@@ -25,14 +26,17 @@ const config: Config = {
               marginBottom: '1.5em',
             },
             h1: {
+              fontFamily: 'var(--font-playfair), Georgia, serif',
               fontWeight: '300',
               letterSpacing: '-0.025em',
             },
             h2: {
+              fontFamily: 'var(--font-playfair), Georgia, serif',
               fontWeight: '300',
               letterSpacing: '-0.025em',
             },
             h3: {
+              fontFamily: 'var(--font-playfair), Georgia, serif',
               fontWeight: '400',
               letterSpacing: '-0.025em',
             },
