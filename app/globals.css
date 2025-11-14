@@ -124,6 +124,7 @@
   .btn-primary {
     @apply px-10 md:px-12 py-3 md:py-4;
     @apply bg-stone-800 hover:bg-stone-900;
+    @apply border border-transparent;
     @apply text-stone-50 text-sm md:text-base;
     @apply font-normal tracking-wide uppercase;
     @apply transition-all duration-300 ease-out;
@@ -153,7 +154,7 @@
 
   /* Secondary button */
   .btn-secondary {
-    @apply px-8 md:px-10 py-2.5 md:py-3;
+    @apply px-10 md:px-12 py-3 md:py-4;
     @apply border border-stone-300 hover:border-stone-900;
     @apply text-stone-700 hover:text-stone-900;
     @apply text-sm md:text-base;
