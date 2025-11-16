@@ -130,7 +130,7 @@ export class DatabaseService {
     watermark: number
   ): Promise<GriefMessage[]> {
     try {
-      const { data, error } = await this.client
+      const { data, error} = await this.client
         .from('messages')
         .select('id, content, created_at, approved, deleted_at')
         .eq('approved', true)
@@ -199,7 +199,8 @@ export class DatabaseService {
         return 0
       }
 
-      const maxId = parseInt(data[0].id, 10)
+      // Type assertion for query result
+      const maxId = parseInt((data[0] as { id: string }).id, 10)
 
       console.log(`[DATABASE_SERVICE] Max message ID: ${maxId}`)
 
