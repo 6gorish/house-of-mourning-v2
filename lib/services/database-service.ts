@@ -237,16 +237,14 @@ export class DatabaseService {
     message: Omit<GriefMessage, 'id'>
   ): Promise<GriefMessage | null> {
     try {
-      const insertData: Database['public']['Tables']['messages']['Insert'] = {
-        content: message.content,
-        approved: message.approved,
-        created_at: message.created_at,
-        deleted_at: message.deleted_at
-      }
-
-      const { data, error } = await this.client
-        .from('messages')
-        .insert(insertData)
+      const { data, error } = await (this.client
+        .from('messages') as any)
+        .insert({
+          content: message.content,
+          approved: message.approved,
+          created_at: message.created_at,
+          deleted_at: message.deleted_at
+        })
         .select('id, content, created_at, approved, deleted_at')
         .single()
 
