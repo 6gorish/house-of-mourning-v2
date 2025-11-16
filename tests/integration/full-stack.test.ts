@@ -35,7 +35,7 @@ describe.skipIf(shouldSkip)('Integration: Full Stack with Real Supabase', () => 
   
   afterAll(async () => {
     // Cleanup
-    service.shutdown()
+    service.cleanup()
   })
 
   test('should connect to Supabase and initialize', async () => {
@@ -96,7 +96,7 @@ describe.skipIf(shouldSkip)('Integration: Full Stack with Real Supabase', () => 
     
     // Cluster 2 should include cluster 1's focus in its related messages
     const previousFocusInRelated = cluster2.related.some(
-      msg => msg.id === cluster1.focus.id
+      r => r.messageId === cluster1.focus.id
     )
     
     expect(previousFocusInRelated).toBe(true)
@@ -119,9 +119,9 @@ describe.skipIf(shouldSkip)('Integration: Full Stack with Real Supabase', () => 
     await customService.initialize()
     
     const stats = customService.getStats()
-    expect(stats.pool.workingSetSize).toBeLessThanOrEqual(100)
+    expect(stats.config.workingSetSize).toBeLessThanOrEqual(100)
     
-    customService.shutdown()
+    customService.cleanup()
   })
 })
 
@@ -134,7 +134,7 @@ describe.skipIf(shouldSkip)('Integration: Database Service Direct Tests', () => 
 
   test('should fetch messages with cursor pagination', async () => {
     const { data, error } = await supabase
-      .from('grief_messages')
+      .from('messages')
       .select('*')
       .eq('approved', true)
       .is('deleted_at', null)
@@ -158,7 +158,7 @@ describe.skipIf(shouldSkip)('Integration: Database Service Direct Tests', () => 
     }
     
     const { data, error } = await supabase
-      .from('grief_messages')
+      .from('messages')
       .insert(testMessage)
       .select()
       .single()

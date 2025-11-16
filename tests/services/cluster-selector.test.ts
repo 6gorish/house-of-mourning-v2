@@ -26,7 +26,7 @@ describe('ClusterSelector', () => {
       const focus = messages[0]
       const candidates = messages.slice(1)
 
-      const related = selector.selectRelatedMessages(focus, candidates, null)
+      const related = selector.selectRelatedMessages(focus, candidates, null, new Set())
 
       expect(related.length).toBeLessThanOrEqual(config.clusterSize - 1)
       expect(related.every((r) => r.message.id !== focus.id)).toBe(true)
@@ -41,7 +41,8 @@ describe('ClusterSelector', () => {
       const related = selector.selectRelatedMessages(
         focus,
         candidates,
-        previousFocus.id
+        previousFocus.id,
+        new Set()
       )
 
       const hasPreviousFocus = related.some((r) => r.message.id === previousFocus.id)
@@ -57,7 +58,7 @@ describe('ClusterSelector', () => {
       const focus = messages[0]
       const candidates = messages
 
-      const related = selector.selectRelatedMessages(focus, candidates, null)
+      const related = selector.selectRelatedMessages(focus, candidates, null, new Set())
 
       const hasFocus = related.some((r) => r.message.id === focus.id)
       expect(hasFocus).toBe(false)
@@ -67,7 +68,7 @@ describe('ClusterSelector', () => {
       const focus = createTestMessage(1, 'Focus')
       const candidates: any[] = []
 
-      const related = selector.selectRelatedMessages(focus, candidates, null)
+      const related = selector.selectRelatedMessages(focus, candidates, null, new Set())
 
       expect(related.length).toBe(0)
     })
@@ -76,7 +77,7 @@ describe('ClusterSelector', () => {
       const focus = createTestMessage(1, 'Focus')
       const candidates = [createTestMessage(2, 'Single candidate')]
 
-      const related = selector.selectRelatedMessages(focus, candidates, null)
+      const related = selector.selectRelatedMessages(focus, candidates, null, new Set())
 
       expect(related.length).toBeLessThanOrEqual(1)
     })
@@ -86,7 +87,7 @@ describe('ClusterSelector', () => {
       const focus = messages[0]
       const candidates = messages.slice(1)
 
-      const related = selector.selectRelatedMessages(focus, candidates, null)
+      const related = selector.selectRelatedMessages(focus, candidates, null, new Set())
 
       // Should not exceed clusterSize - 1 (accounting for focus)
       expect(related.length).toBeLessThanOrEqual(config.clusterSize - 1)
@@ -112,10 +113,82 @@ describe('ClusterSelector', () => {
 
       const candidates = [farTemporal, closeTemporal]
 
-      const related = selector.selectRelatedMessages(focus, candidates, null)
+      const related = selector.selectRelatedMessages(focus, candidates, null, new Set())
 
       // Close temporal should be selected first (higher similarity)
       expect(related[0].message.id).toBe(closeTemporal.id)
+    })
+
+    it('should prefer first-class (priority) messages over regular messages', () => {
+      const messages = createTestMessages(20)
+      const focus = messages[0]
+      const candidates = messages.slice(1)
+
+      // Mark some messages as priority
+      const priorityIds = new Set([messages[5].id, messages[10].id, messages[15].id])
+
+      const related = selector.selectRelatedMessages(
+        focus,
+        candidates,
+        null,
+        priorityIds
+      )
+
+      // All priority messages should be selected if they fit
+      const selectedPriorityIds = related
+        .map((r) => r.message.id)
+        .filter((id) => priorityIds.has(id))
+
+      // Should have selected all available priority messages (3)
+      expect(selectedPriorityIds.length).toBe(3)
+
+      // Priority messages should appear first in related array
+      const firstThree = related.slice(0, 3).map((r) => r.message.id)
+      expect(firstThree.every((id) => priorityIds.has(id))).toBe(true)
+    })
+
+    it('should still include previous focus even when not a priority message', () => {
+      const messages = createTestMessages(20)
+      const focus = messages[10]
+      const previousFocus = messages[5]
+      const candidates = messages
+
+      // Mark some messages as priority (NOT including previous focus)
+      const priorityIds = new Set([messages[1].id, messages[2].id, messages[3].id])
+
+      const related = selector.selectRelatedMessages(
+        focus,
+        candidates,
+        previousFocus.id,
+        priorityIds
+      )
+
+      // Previous focus MUST still be included
+      const hasPreviousFocus = related.some((r) => r.message.id === previousFocus.id)
+      expect(hasPreviousFocus).toBe(true)
+
+      // Previous focus should be first (similarity 1.0)
+      expect(related[0].message.id).toBe(previousFocus.id)
+    })
+
+    it('should handle when no priority messages available', () => {
+      const messages = createTestMessages(20)
+      const focus = messages[0]
+      const candidates = messages.slice(1)
+
+      // Empty priority set
+      const priorityIds = new Set<string>()
+
+      const related = selector.selectRelatedMessages(
+        focus,
+        candidates,
+        null,
+        priorityIds
+      )
+
+      // Should still select messages based on similarity
+      expect(related.length).toBeGreaterThan(0)
+      expect(related.length).toBeLessThanOrEqual(config.clusterSize - 1)
     })
   })
 
@@ -129,7 +202,7 @@ describe('ClusterSelector', () => {
       ]
       const candidates = messages
 
-      const next = selector.selectNextMessage(focus, related, candidates)
+      const next = selector.selectNextMessage(focus, related, candidates, null, new Set())
 
       expect(next).toBe(messages[1]) // Highest similarity
     })
@@ -140,7 +213,7 @@ describe('ClusterSelector', () => {
       const related: any[] = []
       const candidates = messages
 
-      const next = selector.selectNextMessage(focus, related, candidates)
+      const next = selector.selectNextMessage(focus, related, candidates, null, new Set())
 
       expect(next).toBeTruthy()
       expect(next?.id).not.toBe(focus.id)
@@ -151,7 +224,7 @@ describe('ClusterSelector', () => {
       const related: any[] = []
       const candidates = [focus, createTestMessage(2, 'Other')]
 
-      const next = selector.selectNextMessage(focus, related, candidates)
+      const next = selector.selectNextMessage(focus, related, candidates, null, new Set())
 
       expect(next?.id).not.toBe(focus.id)
     })
@@ -161,9 +234,135 @@ describe('ClusterSelector', () => {
       const related: any[] = []
       const candidates = [focus] // Only focus available
 
-      const next = selector.selectNextMessage(focus, related, candidates)
+      const next = selector.selectNextMessage(focus, related, candidates, null, new Set())
 
       expect(next).toBeNull()
+    })
+
+    it('should not select previous focus as next (prevent ping-pong)', () => {
+      const messages = createTestMessages(10)
+      const focus = messages[5]
+      const previousFocus = messages[3]
+      const related = [
+        { message: previousFocus, similarity: 1.0 }, // Previous focus has highest similarity
+        { message: messages[6], similarity: 0.8 },
+        { message: messages[7], similarity: 0.7 }
+      ]
+      const candidates = messages
+
+      const next = selector.selectNextMessage(focus, related, candidates, previousFocus.id, new Set())
+
+      // Should NOT select previous focus (even though it has highest similarity)
+      expect(next?.id).not.toBe(previousFocus.id)
+      // Should select next highest similarity
+      expect(next?.id).toBe(messages[6].id)
+    })
+
+    it('should REQUIRE first-class message as next if any exist in cluster', () => {
+      const messages = createTestMessages(10)
+      const focus = messages[0]
+
+      // Mark one message as priority
+      const priorityIds = new Set([messages[3].id])
+
+      const related = [
+        { message: messages[1], similarity: 0.95 }, // Higher similarity, NOT priority
+        { message: messages[2], similarity: 0.90 }, // NOT priority
+        { message: messages[3], similarity: 0.70 }, // Lower similarity, but IS priority
+        { message: messages[4], similarity: 0.60 }  // NOT priority
+      ]
+      const candidates = messages
+
+      const next = selector.selectNextMessage(
+        focus,
+        related,
+        candidates,
+        null,
+        priorityIds
+      )
+
+      // MUST select the priority message even though it has lower similarity
+      expect(next?.id).toBe(messages[3].id)
+    })
+
+    it('should select multiple first-class messages in order if available', () => {
+      const messages = createTestMessages(10)
+      const focus = messages[0]
+
+      // Mark two messages as priority
+      const priorityIds = new Set([messages[2].id, messages[4].id])
+
+      const related = [
+        { message: messages[1], similarity: 0.95 }, // NOT priority
+        { message: messages[2], similarity: 0.85 }, // Priority (higher similarity among priority)
+        { message: messages[3], similarity: 0.80 }, // NOT priority
+        { message: messages[4], similarity: 0.70 }  // Priority (lower similarity among priority)
+      ]
+      const candidates = messages
+
+      const next = selector.selectNextMessage(
+        focus,
+        related,
+        candidates,
+        null,
+        priorityIds
+      )
+
+      // Should select first priority message (messages[2], highest similarity among priority)
+      expect(next?.id).toBe(messages[2].id)
+    })
+
+    it('should use regular selection when no first-class messages in cluster', () => {
+      const messages = createTestMessages(10)
+      const focus = messages[0]
+
+      // Mark a message as priority, but it's NOT in the cluster
+      const priorityIds = new Set([messages[9].id])
+
+      const related = [
+        { message: messages[1], similarity: 0.95 }, // NOT priority, but highest similarity
+        { message: messages[2], similarity: 0.85 }, // NOT priority
+        { message: messages[3], similarity: 0.75 }  // NOT priority
+      ]
+      const candidates = messages
+
+      const next = selector.selectNextMessage(
+        focus,
+        related,
+        candidates,
+        null,
+        priorityIds
+      )
+
+      // Should use regular selection (highest similarity)
+      expect(next?.id).toBe(messages[1].id)
+    })
+
+    it('should not select previous focus even if it is first-class', () => {
+      const messages = createTestMessages(10)
+      const focus = messages[5]
+      const previousFocus = messages[3]
+
+      // Mark previous focus as priority
+      const priorityIds = new Set([previousFocus.id, messages[6].id])
+
+      const related = [
+        { message: previousFocus, similarity: 1.0 }, // Previous focus, also priority
+        { message: messages[6], similarity: 0.80 }   // Priority
+      ]
+      const candidates = messages
+
+      const next = selector.selectNextMessage(
+        focus,
+        related,
+        candidates,
+        previousFocus.id,
+        priorityIds
+      )
+
+      // Should NOT select previous focus even though it's priority with highest similarity
+      // Should select the other priority message
+      expect(next?.id).toBe(messages[6].id)
     })
   })
 

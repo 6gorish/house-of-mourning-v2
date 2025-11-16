@@ -14,6 +14,17 @@ import type { DatabaseService } from './database-service'
 import { getMemoryUsage } from '@/lib/config/message-pool-config'
 
 /**
+ * Batch Result
+ * 
+ * Return type for getNextBatch() that includes both messages
+ * and tracking information about which came from priority sources.
+ */
+export interface BatchResult {
+  messages: GriefMessage[]
+  priorityIds: string[]  // IDs that came from priority queue or new watermark
+}
+
+/**
  * Message Pool Manager Class
  *
  * Manages the pool of messages available for traversal.
@@ -33,8 +44,7 @@ export class MessagePoolManager {
   // Polling state
   private pollingTimer: NodeJS.Timeout | null = null
 
-  // Surge mode tracking
-  private surgeMode: boolean = false
+  // Surge mode removed - using simplified allocation strategy
 
   constructor(databaseService: DatabaseService, config: MessagePoolConfig) {
     this.databaseService = databaseService
@@ -91,47 +101,73 @@ export class MessagePoolManager {
   /**
    * Get Next Batch
    *
-   * Fetches a batch of messages using allocation strategy.
-   * Balances between historical messages and priority queue.
+   * Fetches a batch of messages using simplified three-stage allocation.
+   * Drains priority queue completely before fetching historical messages.
    *
    * @param count - Number of messages to fetch
-   * @returns Array of grief messages
+   * @returns Batch result with messages and priority IDs
    *
    * @example
-   * const batch = await poolManager.getNextBatch(20)
+   * const { messages, priorityIds } = await poolManager.getNextBatch(18)
    */
-  async getNextBatch(count: number): Promise<GriefMessage[]> {
+  async getNextBatch(count: number): Promise<BatchResult> {
     console.log(`[POOL_MANAGER] Getting next batch of ${count} messages`)
 
-    // Calculate allocation
-    const allocation = this.calculateAllocation(count)
+    const messages: GriefMessage[] = []
+    const priorityIds: string[] = []
 
-    console.log('[POOL_MANAGER] Allocation:', allocation)
-
-    const batch: GriefMessage[] = []
-
-    // Get messages from priority queue (FIFO)
-    if (allocation.prioritySlots > 0) {
-      const queueMessages = this.priorityQueue.splice(0, allocation.prioritySlots)
-      batch.push(...queueMessages)
-
-      console.log(`[POOL_MANAGER] Dequeued ${queueMessages.length} from priority queue`)
+    // STAGE 1: Drain in-memory priority queue
+    if (this.priorityQueue.length > 0) {
+      const fromQueue = this.priorityQueue.splice(0, count)
+      messages.push(...fromQueue)
+      priorityIds.push(...fromQueue.map(m => m.id))
+      
+      console.log(`[POOL_MANAGER] Stage 1: Took ${fromQueue.length} from priority queue`)
     }
 
-    // Get historical messages
-    if (allocation.historicalSlots > 0) {
-      const historicalMessages = await this.fetchHistoricalBatch(allocation.historicalSlots)
-      batch.push(...historicalMessages)
-
-      console.log(`[POOL_MANAGER] Fetched ${historicalMessages.length} historical messages`)
+    if (messages.length >= count) {
+      console.log(`[POOL_MANAGER] Batch complete: ${messages.length} messages (all from queue)`)
+      return { messages, priorityIds }
     }
 
-    // Update surge mode
-    this.updateSurgeMode()
+    // STAGE 2: Check database for NEW messages above watermark
+    const needed = count - messages.length
+    
+    try {
+      const newMessages = await this.databaseService.fetchNewMessagesAboveWatermark(
+        this.newMessageWatermark
+      )
+      
+      if (newMessages.length > 0) {
+        const fromNew = newMessages.slice(0, needed)
+        messages.push(...fromNew)
+        priorityIds.push(...fromNew.map(m => m.id))
+        
+        // Update watermark
+        const maxId = Math.max(...newMessages.map(m => parseInt(m.id, 10)))
+        this.newMessageWatermark = maxId
+        
+        console.log(`[POOL_MANAGER] Stage 2: Took ${fromNew.length} new messages (watermark: ${this.newMessageWatermark})`)
+      }
+    } catch (error) {
+      console.error('[POOL_MANAGER] Stage 2 failed:', error)
+      // Continue to stage 3
+    }
 
-    console.log(`[POOL_MANAGER] Batch complete: ${batch.length} messages (queue: ${this.priorityQueue.length})`)
+    if (messages.length >= count) {
+      console.log(`[POOL_MANAGER] Batch complete: ${messages.length} messages (${priorityIds.length} priority)`)
+      return { messages, priorityIds }
+    }
 
-    return batch
+    // STAGE 3: Fill remainder from historical cursor
+    const stillNeeded = count - messages.length
+    const historical = await this.fetchHistoricalBatch(stillNeeded)
+    messages.push(...historical)
+    
+    console.log(`[POOL_MANAGER] Stage 3: Took ${historical.length} from historical cursor`)
+    console.log(`[POOL_MANAGER] Batch complete: ${messages.length} total (${priorityIds.length} priority, ${historical.length} historical)`)
+
+    return { messages, priorityIds }
   }
 
   /**
@@ -162,9 +198,6 @@ export class MessagePoolManager {
       const dropped = this.priorityQueue.splice(0, this.priorityQueue.length - maxSize)
       console.warn(`[POOL_MANAGER] Queue overflow: dropped ${dropped.length} oldest messages`)
     }
-
-    // Update surge mode
-    this.updateSurgeMode()
   }
 
   /**
@@ -182,7 +215,7 @@ export class MessagePoolManager {
       historicalCursor: this.historicalCursor,
       newMessageWatermark: this.newMessageWatermark,
       priorityQueueSize: this.priorityQueue.length,
-      surgeMode: this.surgeMode,
+      surgeMode: false,  // Always false (surge mode removed)
       queueWaitTime,
       memoryUsage
     }
@@ -209,10 +242,11 @@ export class MessagePoolManager {
   /**
    * Is Surge Mode Active
    *
-   * @returns True if currently in surge mode
+   * @deprecated Surge mode removed in favor of simplified allocation
+   * @returns Always false
    */
   isSurgeMode(): boolean {
-    return this.surgeMode
+    return false
   }
 
   /**
@@ -251,7 +285,7 @@ export class MessagePoolManager {
         return []
       }
 
-      console.log(`[POOL_MANAGER] Recycling cursor to ${maxId}`)
+      console.log(`[POOL_MANAGER] 🔄 RECYCLING: Resetting cursor to ${maxId}`)
       this.historicalCursor = maxId
     }
 
@@ -259,13 +293,12 @@ export class MessagePoolManager {
     const messages = await this.databaseService.fetchBatchWithCursor(
       this.historicalCursor,
       count,
-      'DESC',
-      this.newMessageWatermark // Don't overlap with new messages
+      'DESC'
     )
 
     if (messages.length === 0) {
       // Reached oldest message - recycle
-      console.log('[POOL_MANAGER] Historical cursor exhausted, recycling...')
+      console.log('[POOL_MANAGER] 🔄 RECYCLING: Cursor exhausted, recycling...')
       this.historicalCursor = null
       return this.fetchHistoricalBatch(count) // Retry
     }
@@ -316,68 +349,8 @@ export class MessagePoolManager {
     }
   }
 
-  /**
-   * Calculate Allocation
-   *
-   * Determines how many messages to take from queue vs historical.
-   * Implements normal mode and surge mode logic.
-   *
-   * @param count - Total messages needed
-   * @returns Allocation breakdown
-   */
-  private calculateAllocation(count: number): {
-    prioritySlots: number
-    historicalSlots: number
-  } {
-    const queueSize = this.priorityQueue.length
-
-    let prioritySlots = 0
-    let historicalSlots = 0
-
-    if (this.surgeMode) {
-      // Surge mode: Prioritize new messages
-      prioritySlots = Math.min(
-        queueSize,
-        Math.floor(count * this.config.surgeMode.newMessageRatio)
-      )
-
-      // Guarantee minimum historical representation
-      const minHistorical = Math.floor(count * this.config.surgeMode.minHistoricalRatio)
-      historicalSlots = Math.max(count - prioritySlots, minHistorical)
-
-      // Adjust if we allocated too many historical
-      if (prioritySlots + historicalSlots > count) {
-        historicalSlots = count - prioritySlots
-      }
-    } else {
-      // Normal mode: Limited new messages
-      prioritySlots = Math.min(queueSize, this.config.priorityQueue.normalSlots)
-      historicalSlots = count - prioritySlots
-    }
-
-    return { prioritySlots, historicalSlots }
-  }
-
-  /**
-   * Update Surge Mode
-   *
-   * Checks queue size against threshold.
-   * Activates/deactivates surge mode as needed.
-   */
-  private updateSurgeMode(): void {
-    const queueSize = this.priorityQueue.length
-    const threshold = this.config.surgeMode.threshold
-
-    const shouldBeSurge = queueSize >= threshold
-
-    if (shouldBeSurge && !this.surgeMode) {
-      console.warn(`[POOL_MANAGER] SURGE MODE ACTIVATED (queue: ${queueSize})`)
-      this.surgeMode = true
-    } else if (!shouldBeSurge && this.surgeMode) {
-      console.log(`[POOL_MANAGER] Surge mode deactivated (queue: ${queueSize})`)
-      this.surgeMode = false
-    }
-  }
+  // calculateAllocation() and updateSurgeMode() removed
+  // Simplified allocation now inline in getNextBatch()
 
   /**
    * Calculate Adaptive Queue Size
@@ -426,9 +399,8 @@ export class MessagePoolManager {
     }
 
     // Calculate messages processed per cycle
-    const slotsPerCycle = this.surgeMode
-      ? Math.floor(this.config.clusterSize * this.config.surgeMode.newMessageRatio)
-      : this.config.priorityQueue.normalSlots
+    // With simplified allocation, queue drains at clusterSize per cycle
+    const slotsPerCycle = this.config.clusterSize
 
     // Calculate cycles needed to drain queue
     const cyclesNeeded = Math.ceil(queueSize / slotsPerCycle)

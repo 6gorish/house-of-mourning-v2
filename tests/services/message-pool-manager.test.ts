@@ -6,7 +6,7 @@
  */
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
-import { MessagePoolManager } from '@/lib/services/message-pool-manager'
+import { MessagePoolManager, type BatchResult } from '@/lib/services/message-pool-manager'
 import type { MessagePoolConfig } from '@/types/grief-messages'
 import {
   MockDatabaseService,
@@ -70,8 +70,9 @@ describe('MessagePoolManager', () => {
 
       const batch = await poolManager.getNextBatch(20)
 
-      expect(batch.length).toBe(20)
-      expect(batch.every((msg) => msg.approved)).toBe(true)
+      expect(batch.messages.length).toBe(20)
+      expect(batch.messages.every((msg) => msg.approved)).toBe(true)
+      expect(batch.priorityIds.length).toBe(0) // No priority messages
     })
 
     it('should return empty array when database is empty', async () => {
@@ -80,7 +81,8 @@ describe('MessagePoolManager', () => {
 
       const batch = await poolManager.getNextBatch(20)
 
-      expect(batch.length).toBe(0)
+      expect(batch.messages.length).toBe(0)
+      expect(batch.priorityIds.length).toBe(0)
     })
 
     it('should handle batch size larger than available messages', async () => {
@@ -90,10 +92,10 @@ describe('MessagePoolManager', () => {
 
       const batch = await poolManager.getNextBatch(50)
 
-      expect(batch.length).toBeLessThanOrEqual(10)
+      expect(batch.messages.length).toBeLessThanOrEqual(10)
     })
 
-    it('should allocate slots for priority queue in normal mode', async () => {
+    it('should drain priority queue first with simplified allocation', async () => {
       const messages = createTestMessages(100)
       mockDb.setMessages(messages)
       await poolManager.initialize()
@@ -104,9 +106,11 @@ describe('MessagePoolManager', () => {
 
       const batch = await poolManager.getNextBatch(20)
 
-      // Should include at least one message from priority queue
-      const hasNewMessage = batch.some((msg) => msg.id === '101')
+      // Should include message from priority queue
+      const hasNewMessage = batch.messages.some((msg) => msg.id === '101')
       expect(hasNewMessage).toBe(true)
+      // Should track it as priority
+      expect(batch.priorityIds).toContain('101')
     })
 
     it('should recycle historical cursor when exhausted', async () => {
@@ -120,7 +124,7 @@ describe('MessagePoolManager', () => {
       const batch3 = await poolManager.getNextBatch(3)
 
       // Should still get messages (recycled)
-      expect(batch3.length).toBeGreaterThan(0)
+      expect(batch3.messages.length).toBeGreaterThan(0)
     })
   })
 
@@ -166,86 +170,75 @@ describe('MessagePoolManager', () => {
     })
   })
 
-  describe('surge mode', () => {
-    it('should activate surge mode when queue exceeds threshold', async () => {
+  describe('simplified allocation (surge mode removed)', () => {
+    it('should always return false for isSurgeMode', async () => {
       const messages = createTestMessages(100)
       mockDb.setMessages(messages)
       await poolManager.initialize()
 
-      // Add messages to exceed surge threshold
-      const threshold = config.surgeMode.threshold
-      for (let i = 0; i < threshold + 10; i++) {
-        const msg = createTestMessage(200 + i, `Surge message ${i}`)
+      // Add many messages to queue
+      for (let i = 0; i < 200; i++) {
+        const msg = createTestMessage(200 + i, `Message ${i}`)
         await poolManager.addNewMessage(msg)
       }
 
-      expect(poolManager.isSurgeMode()).toBe(true)
-    })
-
-    it('should deactivate surge mode when queue drops below threshold', async () => {
-      const messages = createTestMessages(100)
-      mockDb.setMessages(messages)
-      await poolManager.initialize()
-
-      // Activate surge mode
-      const threshold = config.surgeMode.threshold
-      for (let i = 0; i < threshold + 10; i++) {
-        const msg = createTestMessage(200 + i, `Surge message ${i}`)
-        await poolManager.addNewMessage(msg)
-      }
-
-      expect(poolManager.isSurgeMode()).toBe(true)
-
-      // Drain queue by fetching batches
-      while (poolManager.getStats().priorityQueueSize > threshold - 10) {
-        await poolManager.getNextBatch(20)
-      }
-
+      // Surge mode is deprecated and always false
       expect(poolManager.isSurgeMode()).toBe(false)
     })
 
-    it('should allocate more slots to new messages in surge mode', async () => {
+    it('should drain priority queue completely before historical', async () => {
       const messages = createTestMessages(100)
       mockDb.setMessages(messages)
       await poolManager.initialize()
 
-      // Activate surge mode
-      const threshold = config.surgeMode.threshold
-      for (let i = 0; i < threshold + 10; i++) {
-        const msg = createTestMessage(200 + i, `Surge message ${i}`)
+      // Add 10 messages to priority queue
+      for (let i = 0; i < 10; i++) {
+        const msg = createTestMessage(200 + i, `Priority message ${i}`)
         await poolManager.addNewMessage(msg)
       }
 
       const batch = await poolManager.getNextBatch(20)
 
-      // Count new messages in batch (IDs >= 200)
-      const newMessageCount = batch.filter((msg) => parseInt(msg.id) >= 200).length
-
-      // In surge mode, should have more than normal slots (5)
-      const expectedMinimum = Math.floor(20 * config.surgeMode.newMessageRatio * 0.8)
-      expect(newMessageCount).toBeGreaterThan(config.priorityQueue.normalSlots)
+      // Should take all 10 from priority queue first
+      const priorityCount = batch.messages.filter((msg) => parseInt(msg.id) >= 200).length
+      expect(priorityCount).toBe(10)
+      expect(batch.priorityIds.length).toBe(10)
+      
+      // Remaining 10 should be historical
+      expect(batch.messages.length).toBe(20)
     })
 
-    it('should guarantee minimum historical ratio in surge mode', async () => {
+    it('should take all from priority queue when it has enough', async () => {
       const messages = createTestMessages(100)
       mockDb.setMessages(messages)
       await poolManager.initialize()
 
-      // Activate surge mode
-      const threshold = config.surgeMode.threshold
-      for (let i = 0; i < threshold + 10; i++) {
-        const msg = createTestMessage(200 + i, `Surge message ${i}`)
+      // Add 30 messages to priority queue (more than needed)
+      for (let i = 0; i < 30; i++) {
+        const msg = createTestMessage(200 + i, `Priority message ${i}`)
         await poolManager.addNewMessage(msg)
       }
 
       const batch = await poolManager.getNextBatch(20)
 
-      // Count historical messages (IDs < 200)
-      const historicalCount = batch.filter((msg) => parseInt(msg.id) < 200).length
+      // Should take all 20 from priority queue
+      const priorityCount = batch.messages.filter((msg) => parseInt(msg.id) >= 200).length
+      expect(priorityCount).toBe(20)
+      expect(batch.priorityIds.length).toBe(20)
+      expect(batch.messages.length).toBe(20)
+    })
 
-      // Should have at least minimum historical ratio
-      const expectedMinimum = Math.floor(20 * config.surgeMode.minHistoricalRatio)
-      expect(historicalCount).toBeGreaterThanOrEqual(expectedMinimum)
+    it('should use only historical when queue is empty', async () => {
+      const messages = createTestMessages(100)
+      mockDb.setMessages(messages)
+      await poolManager.initialize()
+
+      const batch = await poolManager.getNextBatch(20)
+
+      // No priority messages
+      expect(batch.priorityIds.length).toBe(0)
+      // All historical
+      expect(batch.messages.length).toBe(20)
     })
   })
 
@@ -331,7 +324,7 @@ describe('MessagePoolManager', () => {
 
       const batch = await poolManager.getNextBatch(20)
 
-      expect(batch.length).toBe(1)
+      expect(batch.messages.length).toBe(1)
     })
 
     it('should handle requesting more messages than exist', async () => {
@@ -341,7 +334,7 @@ describe('MessagePoolManager', () => {
 
       const batch = await poolManager.getNextBatch(100)
 
-      expect(batch.length).toBeLessThanOrEqual(5)
+      expect(batch.messages.length).toBeLessThanOrEqual(5)
     })
 
     it('should handle watermark higher than all messages', async () => {

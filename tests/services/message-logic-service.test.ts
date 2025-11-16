@@ -265,6 +265,8 @@ describe('MessageLogicService', () => {
       expect(stats).toHaveProperty('totalClustersShown')
       expect(stats).toHaveProperty('currentFocus')
       expect(stats).toHaveProperty('previousFocus')
+      expect(stats).toHaveProperty('workingSetSize')
+      expect(stats).toHaveProperty('priorityMessageCount')
       expect(stats).toHaveProperty('pool')
       expect(stats).toHaveProperty('config')
     })
@@ -306,33 +308,7 @@ describe('MessageLogicService', () => {
     })
   })
 
-  describe('isSurgeMode', () => {
-    it('should reflect pool manager surge mode state', async () => {
-      const messages = createTestMessages(50)
-      mockClient.setMessages(messages)
 
-      service = new MessageLogicService(mockClient as any, config)
-      await service.initialize()
-
-      const initialSurgeMode = service.isSurgeMode()
-      expect(initialSurgeMode).toBe(false)
-
-      // Add many messages to trigger surge mode
-      const threshold = config.surgeMode.threshold
-      for (let i = 0; i < threshold + 10; i++) {
-        const msg = {
-          content: `Surge message ${i}`,
-          approved: true,
-          created_at: new Date().toISOString(),
-          deleted_at: null
-        }
-        await service.addNewMessage(msg)
-      }
-
-      const surgeModeActive = service.isSurgeMode()
-      expect(surgeModeActive).toBe(true)
-    })
-  })
 
   describe('resetTraversal', () => {
     it('should reset traversal state', async () => {
@@ -384,6 +360,103 @@ describe('MessageLogicService', () => {
         service.cleanup()
         service.cleanup()
       }).not.toThrow()
+    })
+  })
+
+  describe('working set', () => {
+    it('should maintain fixed working set size after initialization', async () => {
+      const messages = createTestMessages(500)
+      mockClient.setMessages(messages)
+
+      service = new MessageLogicService(mockClient as any, config)
+      await service.initialize()
+
+      const stats = service.getStats()
+      expect(stats.workingSetSize).toBe(config.workingSetSize)
+    })
+
+    it('should maintain working set size after cluster transitions', async () => {
+      const messages = createTestMessages(500)
+      mockClient.setMessages(messages)
+
+      service = new MessageLogicService(mockClient as any, config)
+      await service.initialize()
+
+      const initialSize = service.getWorkingSetSize()
+
+      await service.getNextCluster()
+      expect(service.getWorkingSetSize()).toBe(initialSize)
+
+      await service.getNextCluster()
+      expect(service.getWorkingSetSize()).toBe(initialSize)
+
+      await service.getNextCluster()
+      expect(service.getWorkingSetSize()).toBe(initialSize)
+    })
+
+    it('should track priority messages in working set', async () => {
+      const messages = createTestMessages(500)
+      mockClient.setMessages(messages)
+
+      service = new MessageLogicService(mockClient as any, config)
+      await service.initialize()
+
+      // Add a new message (should be tracked as priority)
+      await service.addNewMessage({
+        content: 'Priority message',
+        approved: true,
+        created_at: new Date().toISOString(),
+        deleted_at: null
+      })
+
+      // After next cluster, the priority message should be in working set
+      await service.getNextCluster()
+
+      const stats = service.getStats()
+      expect(stats.priorityMessageCount).toBeGreaterThan(0)
+    })
+
+    it('should emit working set changes when callback registered', async () => {
+      const messages = createTestMessages(500)
+      mockClient.setMessages(messages)
+
+      service = new MessageLogicService(mockClient as any, config)
+      await service.initialize()
+
+      let changeEmitted = false
+      let removedCount = 0
+      let addedCount = 0
+
+      service.onWorkingSetChange(({ removed, added }) => {
+        changeEmitted = true
+        removedCount = removed.length
+        addedCount = added.length
+      })
+
+      await service.getNextCluster()
+
+      expect(changeEmitted).toBe(true)
+      expect(removedCount).toBeGreaterThan(0)
+      expect(addedCount).toBeGreaterThan(0)
+      expect(removedCount).toBe(addedCount) // Should be balanced
+    })
+
+    it('should return copy of working set', async () => {
+      const messages = createTestMessages(500)
+      mockClient.setMessages(messages)
+
+      service = new MessageLogicService(mockClient as any, config)
+      await service.initialize()
+
+      const workingSet1 = service.getWorkingSet()
+      const workingSet2 = service.getWorkingSet()
+
+      // Should be different array instances (copies)
+      expect(workingSet1).not.toBe(workingSet2)
+
+      // But should have same content
+      expect(workingSet1.length).toBe(workingSet2.length)
+      expect(workingSet1[0].id).toBe(workingSet2[0].id)
     })
   })
 

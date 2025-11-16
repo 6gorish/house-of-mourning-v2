@@ -31,24 +31,28 @@ export class ClusterSelector {
    *
    * Chooses messages most similar to the focus message.
    * Ensures previous focus is ALWAYS included for traversal continuity.
+   * Prefers first-class (priority) messages when available.
    *
    * @param focus - The focal message for this cluster
    * @param candidates - Pool of available messages
    * @param previousFocusId - ID of previous cluster's focus (null for first cluster)
+   * @param priorityIds - Set of message IDs that are first-class (priority)
    * @returns Array of related messages with similarity scores
    *
    * @example
    * const related = selector.selectRelatedMessages(
    *   focusMessage,
    *   candidatePool,
-   *   '12345'
+   *   '12345',
+   *   new Set(['msg1', 'msg2'])
    * )
    * console.log(`Selected ${related.length} related messages`)
    */
   selectRelatedMessages(
     focus: GriefMessage,
     candidates: GriefMessage[],
-    previousFocusId: string | null
+    previousFocusId: string | null,
+    priorityIds: Set<string>
   ): Array<{ message: GriefMessage; similarity: number }> {
     console.log(
       `[CLUSTER_SELECTOR] Selecting related messages for focus ${focus.id} (candidates: ${candidates.length})`
@@ -88,8 +92,28 @@ export class ClusterSelector {
     // Sort candidates by similarity to focus
     const sorted = sortBySimilarity(focus, availableCandidates, this.config.similarity)
 
-    // Select top N most similar messages
-    const similarMessages = sorted.slice(0, similaritySlots)
+    // Separate into priority and non-priority messages
+    const priorityMessages = sorted.filter((r) => priorityIds.has(r.message.id))
+    const regularMessages = sorted.filter((r) => !priorityIds.has(r.message.id))
+
+    console.log(
+      `[CLUSTER_SELECTOR] Candidates: ${priorityMessages.length} priority, ${regularMessages.length} regular`
+    )
+
+    // Fill slots preferring priority messages first
+    const selectedMessages: Array<{ message: GriefMessage; similarity: number }> = []
+
+    // Take all priority messages that fit
+    const priorityToTake = Math.min(priorityMessages.length, similaritySlots)
+    selectedMessages.push(...priorityMessages.slice(0, priorityToTake))
+
+    // Fill remaining slots with regular messages
+    const remainingSlots = similaritySlots - selectedMessages.length
+    if (remainingSlots > 0) {
+      selectedMessages.push(...regularMessages.slice(0, remainingSlots))
+    }
+
+    const similarMessages = selectedMessages
 
     // Build final related array
     const related: Array<{ message: GriefMessage; similarity: number }> = []
@@ -116,48 +140,73 @@ export class ClusterSelector {
    * Select Next Message
    *
    * Chooses the next focus message for traversal continuity.
-   * Prefers highest similarity, but falls back to first available.
+   * REQUIRES first-class message if any exist in cluster.
+   * Otherwise prefers highest similarity from related array.
    *
    * Strategy:
-   * 1. If related messages exist, pick most similar (first in sorted array)
-   * 2. If no related messages, pick from original candidates
-   * 3. Exclude current focus from selection
+   * 1. If ANY first-class messages in cluster, one MUST be selected as next
+   * 2. If no first-class messages, pick most similar from related
+   * 3. If no related messages, pick from candidates (working set)
+   * 4. Exclude current focus and previous focus from selection
    *
    * @param focus - Current focus message
    * @param related - Related messages from current cluster
-   * @param candidates - Full pool of candidates (fallback)
+   * @param candidates - Full pool of candidates (working set) - fallback only
+   * @param previousFocusId - ID of previous focus (to prevent ping-pong)
+   * @param priorityIds - Set of message IDs that are first-class (priority)
    * @returns Next focus message, or null if no messages available
-   *
-   * @example
-   * const next = selector.selectNextMessage(
-   *   currentFocus,
-   *   relatedMessages,
-   *   candidatePool
-   * )
-   * if (next) {
-   *   console.log(`Next focus: ${next.id}`)
-   * }
    */
   selectNextMessage(
     focus: GriefMessage,
     related: Array<{ message: GriefMessage; similarity: number }>,
-    candidates: GriefMessage[]
+    candidates: GriefMessage[],
+    previousFocusId: string | null,
+    priorityIds: Set<string>
   ): GriefMessage | null {
     console.log(`[CLUSTER_SELECTOR] Selecting next message after focus ${focus.id}`)
 
-    // Strategy 1: Pick most similar from related messages
+    // CRITICAL REQUIREMENT: If ANY first-class messages in cluster, one MUST be next
     if (related.length > 0) {
-      // Related array is already sorted by similarity (highest first)
-      const next = related[0].message
-
-      console.log(
-        `[CLUSTER_SELECTOR] Selected next from related: ${next.id} (similarity: ${related[0].similarity.toFixed(2)})`
+      // Find first-class messages in cluster (excluding previous focus)
+      const firstClassInCluster = related.filter(
+        (r) => priorityIds.has(r.message.id) && r.message.id !== previousFocusId
       )
 
-      return next
+      if (firstClassInCluster.length > 0) {
+        // MUST select a first-class message - pick first one (highest similarity among priority)
+        const next = firstClassInCluster[0].message
+
+        console.log(
+          `[CLUSTER_SELECTOR] Selected FIRST-CLASS next: ${next.id} (similarity: ${firstClassInCluster[0].similarity.toFixed(2)})`
+        )
+
+        return next
+      }
+
+      // No first-class messages in cluster - use similarity-based selection
+      console.log(`[CLUSTER_SELECTOR] No first-class messages in cluster, using similarity`)
+
+      // Filter out previous focus to prevent ping-pong between same messages
+      const eligibleNext = related.filter((r) => r.message.id !== previousFocusId)
+
+      if (eligibleNext.length > 0) {
+        // Related array is already sorted by similarity (highest first)
+        const next = eligibleNext[0].message
+
+        console.log(
+          `[CLUSTER_SELECTOR] Selected next from related: ${next.id} (similarity: ${eligibleNext[0].similarity.toFixed(2)})`
+        )
+
+        return next
+      }
+
+      // If all related are the previous focus (shouldn't happen), fall through to candidates
+      console.warn(
+        `[CLUSTER_SELECTOR] All related messages are previous focus, using fallback`
+      )
     }
 
-    // Strategy 2: Fallback to first candidate that's not the current focus
+    // Fallback: Pick first candidate that's not the current focus
     const fallback = candidates.find((msg) => msg.id !== focus.id)
 
     if (fallback) {
@@ -201,6 +250,16 @@ export class ClusterSelector {
 
     if (uniqueIds.size !== allIds.length) {
       console.error('[CLUSTER_SELECTOR] Cluster validation failed: duplicate messages')
+      console.error(`[CLUSTER_SELECTOR] All IDs: [${allIds.join(', ')}]`)
+      console.error(`[CLUSTER_SELECTOR] Unique IDs: ${uniqueIds.size}, All IDs: ${allIds.length}`)
+      // Find duplicates
+      const seen = new Set<string>()
+      const duplicates = allIds.filter(id => {
+        if (seen.has(id)) return true
+        seen.add(id)
+        return false
+      })
+      console.error(`[CLUSTER_SELECTOR] Duplicate IDs: [${duplicates.join(', ')}]`)
       return false
     }
 
@@ -208,6 +267,8 @@ export class ClusterSelector {
     const focusInRelated = related.some((r) => r.message.id === focus.id)
     if (focusInRelated) {
       console.error('[CLUSTER_SELECTOR] Cluster validation failed: focus in related array')
+      console.error(`[CLUSTER_SELECTOR] Focus ID: ${focus.id}`)
+      console.error(`[CLUSTER_SELECTOR] Related IDs: [${related.map(r => r.message.id).join(', ')}]`)
       return false
     }
 

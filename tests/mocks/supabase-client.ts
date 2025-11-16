@@ -49,7 +49,7 @@ class MockTableQuery {
   private shouldFailFn: () => boolean
 
   constructor(messages: GriefMessage[], shouldFail: boolean, shouldFailFn: () => boolean) {
-    this.data = [...messages]
+    this.data = messages  // Use reference, not copy
     this.shouldFailFn = shouldFailFn
   }
 
