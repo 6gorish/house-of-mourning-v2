@@ -45,7 +45,7 @@ Sam Grabowska (b.1982 San Diego, CA, USA) is a multidisciplinary artist living a
 ---
 
 ## Kawaji
-*Opening Reception Music*
+*Musician*
 **image:** kawaji.jpg
 
 Kawaji is a Portland, ME-based selector specializing in underground UK bass music, dubstep, and dub techno. With a background in jazz bass performance, he brings a musician's ear to his curation, building sets that honor the deep, contemplative qualities of 140 bpm bass music. He hosts a regular show on Sub FM, the London-based underground bass music station, every other Tuesday, where he explores the shadowy territories between dub techno's hypnotic minimalism and UK dubstep's weighted low-end. He acquired his moniker  during years spent living in South Sudan before independence, where distance from Western club culture helped him develop an idiosyncratic approach to electronic sound. For The House of Mourning's opening reception, Kawaji will provide a sonic backdrop that mirrors the exhibition's contemplative atmosphere—bass-heavy, immersive, and designed for deep listening.

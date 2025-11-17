@@ -54,15 +54,15 @@ export default function ArtistProfile({ content }: ArtistProfileProps) {
       if (hasImage) {
         // Two-column layout for artists with images
         const profileGrid = document.createElement('div')
-        profileGrid.className = 'grid md:grid-cols-[1fr_320px] gap-6 md:gap-12 items-start'
+        profileGrid.className = 'grid md:grid-cols-[1fr_320px] gap-2 md:gap-12 md:items-start'
         
         // Create bio column
         const bioColumn = document.createElement('div')
-        bioColumn.className = 'artist-bio'
+        bioColumn.className = 'artist-bio flex flex-col'
         
         // Add heading
         const headingClone = heading.cloneNode(true) as HTMLElement
-        headingClone.className = 'text-3xl md:text-4xl font-light tracking-tight text-stone-900 mb-0 mt-0'
+        headingClone.className = 'text-3xl md:text-4xl font-light tracking-tight leading-none text-stone-900 mb-1 mt-0'
         bioColumn.appendChild(headingClone)
 
         // Collect all content until next h2/h3 or hr
@@ -91,13 +91,16 @@ export default function ArtistProfile({ content }: ArtistProfileProps) {
           // Check if this is the role line: first element, paragraph, starts with <em>
           const startsWithEm = clone.tagName === 'P' && clone.innerHTML.trim().startsWith('<em>')
           const isRole = index === 0 && startsWithEm
+          const isLastElement = index === bioContent.length - 1
           
           if (isRole) {
-            // Style as subtitle/role
-            clone.className = 'text-lg md:text-xl font-light italic text-stone-600 mb-4 mt-1'
+            // Style as subtitle/role - reduced bottom margin
+            clone.className = 'text-lg md:text-xl font-light italic text-stone-600 mb-3 mt-1'
           } else if (clone.tagName === 'P') {
-            // Style as regular paragraph
-            clone.className = 'text-base md:text-lg font-light leading-relaxed text-stone-700'
+            // Style as regular paragraph - no bottom margin on last element
+            clone.className = isLastElement 
+              ? 'text-base md:text-lg font-light leading-relaxed text-stone-700 mb-0'
+              : 'text-base md:text-lg font-light leading-relaxed text-stone-700 mb-4'
           }
           
           // Only add if there's actual content left
@@ -106,17 +109,17 @@ export default function ArtistProfile({ content }: ArtistProfileProps) {
           }
         })
 
-        // Create image column
+        // Create image column - must align with top of bio content
         const imageColumn = document.createElement('div')
         imageColumn.className = 'artist-image-container w-full'
         
         const imageWrapper = document.createElement('div')
-        imageWrapper.className = 'relative w-full flex justify-center items-start'
+        imageWrapper.className = 'relative w-full'
         
         const img = document.createElement('img')
         img.src = `/images/artists/headshots/${imagePath}`
         img.alt = heading.textContent || 'Artist headshot'
-        img.className = 'artist-headshot-img w-full md:max-w-full h-auto rounded-sm shadow-lg grayscale-[30%] hover:grayscale-0 transition-all duration-500'
+        img.className = 'artist-headshot-img w-full md:max-w-full h-auto rounded-sm shadow-lg grayscale-[30%] hover:grayscale-0 transition-all duration-500 block md:mt-0 md:mb-0'
         img.loading = 'lazy'
         
         img.onload = function() {
@@ -208,7 +211,7 @@ export default function ArtistProfile({ content }: ArtistProfileProps) {
                  [&>h2]:text-3xl [&>h2]:md:text-4xl [&>h2]:font-light [&>h2]:tracking-tight [&>h2]:mt-16 [&>h2]:mb-6
                  [&>h3]:text-2xl [&>h3]:md:text-3xl [&>h3]:font-normal [&>h3]:tracking-tight [&>h3]:mt-12 [&>h3]:mb-4
                  [&>p]:text-base [&>p]:md:text-lg [&>p]:font-light [&>p]:leading-relaxed [&>p]:text-stone-700 [&>p]:mb-6
-                 [&>hr]:mt-0 [&>hr]:mb-6 [&>hr]:border-stone-200"
+                 [&>hr]:mt-0 [&>hr]:mb-6 [&>hr]:md:mt-6 [&>hr]:border-stone-200"
       dangerouslySetInnerHTML={{ __html: content }}
     />
   )
