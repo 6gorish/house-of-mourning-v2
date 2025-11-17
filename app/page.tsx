@@ -37,7 +37,7 @@ export default async function HomePage() {
               </h1>
 
               <p className="text-xl md:text-2xl font-light leading-relaxed text-white/90 max-w-3xl">
-                Grief witnessed collectively through art, sound, and ritual.
+                Grief witnessed collectively through art, sound, and language.
               </p>
 
               <p className="text-sm md:text-base text-white/70 tracking-wide uppercase">

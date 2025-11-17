@@ -8,7 +8,7 @@ description: "Individual experiences of loss become luminous particles in a shar
 
 # Hero Section
 
-Grief witnessed collectively through art, sound, and ritual.
+Grief witnessed collectively through art, sound, and language.
 
 **December 19-20, 2025 | Truss House, Denver**
 

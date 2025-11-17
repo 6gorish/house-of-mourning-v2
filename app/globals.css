@@ -176,6 +176,55 @@
   .hero-section {
     @apply py-32 md:py-40 px-6 md:px-12;
   }
+
+  /* Artist profile links - elegant, subtle styling */
+  .artist-profiles a {
+    @apply text-stone-600 hover:text-stone-900;
+    @apply font-normal;
+    @apply transition-all duration-200;
+    @apply inline-block;
+    @apply relative;
+    text-decoration: none;
+    padding-left: 1.2em;
+  }
+
+  /* Arrow/chevron before link */
+  .artist-profiles a::before {
+    content: '→';
+    position: absolute;
+    left: 0;
+    @apply text-stone-400;
+    transition: all 0.2s ease-out;
+  }
+
+  /* Subtle underline on hover */
+  .artist-profiles a::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 1.2em;
+    right: 0;
+    height: 1px;
+    @apply bg-stone-300;
+    transform: scaleX(0);
+    transform-origin: left;
+    transition: transform 0.3s ease-out;
+  }
+
+  .artist-profiles a:hover::before {
+    @apply text-stone-900;
+    transform: translateX(3px);
+  }
+
+  .artist-profiles a:hover::after {
+    transform: scaleX(1);
+  }
+
+  /* Ensure links display as block for line breaks */
+  .artist-profiles p a {
+    display: inline-block;
+    margin: 0.25rem 0;
+  }
 }
 
 /* Respect motion preferences */

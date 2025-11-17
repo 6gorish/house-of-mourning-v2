@@ -37,7 +37,7 @@ Lee Knight curated exhibitions at 18th Street Arts Center in Santa Monica and le
 
 VI Gorish is a multidisciplinary artist whose work explores contemplative and transcendental experience. Drawing on an academic background in music and professional career in technology, VI works fluidly across audio, video, code, language, and visual media. For this project, VI developed the generative soundscape and video, designed the interactive visualization system, and created the technical infrastructure allowing visitor contributions to become part of the living installation.
 
-The visual artists contributing to the exhibition bring diverse approaches to exploring grief and loss. [Additional artist information will be added as confirmed.] Saturday evening performers include poets and musicians working in experimental and contemplative modes, transforming the exhibition space into a venue for collective witness and ritual.
+The visual artists contributing to the exhibition bring diverse approaches to exploring grief and loss. Saturday evening performers include poets and musicians working in experimental and contemplative modes, transforming the exhibition space into a venue for collective witness and ritual.
 
 The aesthetic decisions throughout—the darkness, the verticality, the layered sound, the particle-based visualization—all serve the same purpose: creating contemporary sacred space that honors grief without prescribing how to experience it. This isn't art therapy. It's not a grief support group. It's an exhibition that takes mourning seriously as subject matter and creates room for visitors to be present with loss—theirs and others'.
 
