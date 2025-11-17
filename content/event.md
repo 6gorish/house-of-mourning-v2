@@ -14,14 +14,15 @@ description: "Event details, location, and accessibility information for The Hou
 # Date & Time
 
 ## Friday, December 19, 2025
-*Exhibition Opening with Reception*  
-[Opening time TBD] — [Closing time TBD]  
+*Exhibition and Opening Reception*  
+Exhibition: doors open at 5:00 pm  
+Reception: 6:00 pm — 10:00 pm  
 Music by Kawaji
 
 ## Saturday, December 20, 2025
 *Exhibition continues with evening poetry and music performances*  
-[Opening time TBD] — 2:00 AM (hard cutoff)  
-Performance times TBD
+Exhibition: 1:00 pm — midnight  
+Performance: 7:00 pm — 10:00 pm
 
 ---
 
@@ -37,7 +38,7 @@ Truss House is a contemporary art space in Denver's RiNo Arts District, a creati
 
 **Public Transit:** RTD Bus Route 28 stops at Blake St & Walnut St (0.3 miles walking). Light rail: 38th & Blake Station on the A, B, G, and N Lines (0.6 miles walking).
 
-[Get Directions →](#)
+[Get Directions →](https://www.google.com/maps/place/3400+Arkins+Ct,+Denver,+CO+80216)
 
 ---
 
@@ -46,6 +47,8 @@ Truss House is a contemporary art space in Denver's RiNo Arts District, a creati
 **Free and open to the public.**
 
 No tickets or registration required. This event is made possible in part by a grant from RiNo Arts District.
+
+[RSVP on Eventbrite →](https://www.eventbrite.com/e/house-of-mourning-tickets-1969391685546)
 
 ---
 
@@ -61,7 +64,7 @@ No tickets or registration required. This event is made possible in part by a gr
 - No strobe lights or sudden flashing
 - This is a space for contemplation; respectful quiet is appreciated
 
-**Specific Needs:** If you have mobility, sensory, dietary, or other access needs, please contact us in advance at twoflaneurs.com@gmail.com.
+**Specific Needs:** If you have mobility, sensory, or other access needs, please contact us in advance at twoflaneurs.com@gmail.com.
 
 ---
 
