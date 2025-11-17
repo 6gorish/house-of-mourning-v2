@@ -26,7 +26,7 @@ uniform float brightness;
 uniform vec3 color;
 uniform vec3 accent;
 
-#define NUM_OCTAVES 6
+#define NUM_OCTAVES 4
 
 mat3 rotX(float a) {
     float c = cos(a);
@@ -131,7 +131,9 @@ export function ShaderBackground() {
     rendererRef.current = renderer
 
     renderer.setSize(window.innerWidth, window.innerHeight)
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
+    // Reduce pixel ratio on mobile for better performance
+    const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent)
+    renderer.setPixelRatio(isMobile ? 1 : Math.min(window.devicePixelRatio, 2))
     containerRef.current.appendChild(renderer.domElement)
 
     // Shader material with ISF parameters
@@ -180,7 +182,9 @@ export function ShaderBackground() {
     let animationFrameId: number
     const animate = () => {
       if (!material || !renderer || !scene) return
-      material.uniforms.u_time.value += 0.01
+      // Faster animation on mobile to compensate for lower framerate
+      const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent)
+      material.uniforms.u_time.value += isMobile ? 0.02 : 0.01
       renderer.render(scene, camera)
       animationFrameId = requestAnimationFrame(animate)
     }
