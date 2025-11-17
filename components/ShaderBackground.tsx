@@ -26,7 +26,7 @@ uniform float brightness;
 uniform vec3 color;
 uniform vec3 accent;
 
-#define NUM_OCTAVES 4
+#define NUM_OCTAVES 6
 
 mat3 rotX(float a) {
     float c = cos(a);
