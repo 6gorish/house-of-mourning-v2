@@ -55,7 +55,32 @@ const logoFont = Cinzel({
 
 export const metadata: Metadata = {
   title: 'The House of Mourning',
-  description: 'An exhibition exploring grief through contemporary sacred aesthetics.',
+  description: 'An exhibition exploring grief through contemporary sacred aesthetics. December 19-20, 2025 at Truss House, Denver.',
+  icons: {
+    icon: '/favicon.svg',
+  },
+  openGraph: {
+    title: 'The House of Mourning',
+    description: 'Grief witnessed collectively through art, sound, and language. December 19-20, 2025 at Truss House, Denver.',
+    url: 'https://thehouseofmourning.com',
+    siteName: 'The House of Mourning',
+    images: [
+      {
+        url: '/og-image.png', // You'll need to add this image
+        width: 1200,
+        height: 630,
+        alt: 'The House of Mourning Exhibition',
+      },
+    ],
+    locale: 'en_US',
+    type: 'website',
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'The House of Mourning',
+    description: 'Grief witnessed collectively through art, sound, and language. December 19-20, 2025.',
+    images: ['/og-image.png'], // You'll need to add this image
+  },
 };
 
 export default function RootLayout({
@@ -69,17 +94,17 @@ export default function RootLayout({
         {/* Navigation */}
         <nav className="border-b border-stone-200 bg-stone-50/95 backdrop-blur-sm sticky top-0 z-50 transition-elegant">
           <div className="max-w-6xl mx-auto px-6 md:px-12 py-4 md:py-6">
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between min-h-[40px]">
               {/* Site title */}
               <Link 
                 href="/" 
-                className="group relative"
+                className="group relative flex items-center self-center"
               >
                 <span className="text-2xl md:text-3xl font-light tracking-tight text-stone-900 
                                transition-all duration-300 ease-out
                                group-hover:text-stone-600
-                               relative inline-block"
-                      style={{ fontFamily: 'var(--font-logo)' }}>
+                               relative inline-block leading-none"
+                      style={{ fontFamily: 'var(--font-logo)', display: 'flex', alignItems: 'center' }}>
                   The House of Mourning
                   {/* Elegant underline on hover */}
                   <span className="absolute bottom-0 left-0 w-0 h-[1px] bg-stone-900 

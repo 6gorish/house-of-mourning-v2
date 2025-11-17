@@ -7,9 +7,9 @@ description: "An exhibition exploring grief through contemporary sacred aestheti
 
 *"The heart of the wise is in the house of mourning."* — Ecclesiastes 7:4
 
-This exhibition begins with the acknowledgment of a paradox: grief is universal and yet deeply individual and personal. Everyone experiences loss. Yet we're often left without adequate spaces to honor that experience—especially spaces that don't demand we move through mourning on someone else's timeline, that don't require religious frameworks, that welcome the full complexity of how grief actually feels.
+This exhibition begins with the acknowledgment of a paradox: grief is both universal and deeply personal. Everyone experiences loss. Yet we're often left without adequate spaces to honor that experience—especially spaces that don't demand we move through mourning on someone else's timeline, that don't require religious frameworks, that welcome the full complexity of how grief actually feels.
 
-*The House of Mourning* creates that space. Drawing on the visual language of medieval mourning—ritual, religious iconography, gothic aesthetics—the project engages these traditions through a contemporary, queer, and neurodivergent lens. We're not recreating historical practices. We're asking what secular sacred space looks like now. What rituals serve us when we can't rely on inherited belief systems? How do we honor grief's weight while remaining accessible to people from all backgrounds?
+*The House of Mourning* creates that space. Drawing on the visual language of medieval mourning—ritual, religious iconography, gothic aesthetics—the project engages these traditions through a contemporary, queer, and neurodivergent lens. We're not recreating historical practices. Instead, we're asking what secular sacred space looks like now. What rituals serve us when we can't rely on inherited belief systems? How do we honor grief's weight while remaining accessible to people from all backgrounds?
 
 The exhibition features mixed-media works by visual artists exploring loss through visual reconstruction, expressionist gesture, assemblage, and figurative approaches. These pieces don't offer comfort or closure. They hold space for lament as a necessary precursor to healing, transcendence, and transformation. They acknowledge what medieval mourning understood: sometimes the most important thing we can do is stop and witness grief itself.
 
@@ -37,7 +37,7 @@ Lee Knight curated exhibitions at 18th Street Arts Center in Santa Monica and le
 
 VI Gorish is a multidisciplinary artist whose work explores contemplative and transcendental experience. Drawing on an academic background in music and professional career in technology, VI works fluidly across audio, video, code, language, and visual media. For this project, VI developed the generative soundscape and video, designed the interactive visualization system, and created the technical infrastructure allowing visitor contributions to become part of the living installation.
 
-The visual artists contributing to the exhibition bring diverse approaches to exploring grief and loss. [Additional artist information will be added as confirmed.] Saturday evening performers include poets and musicians working in experimental and contemplative modes, transforming the exhibition space into a venue for collective witness and ritual.
+The visual artists contributing to the exhibition bring diverse approaches to exploring grief and loss. Saturday evening performers include poets and musicians working in experimental and contemplative modes, transforming the exhibition space into a venue for collective witness and ritual.
 
 The aesthetic decisions throughout—the darkness, the verticality, the layered sound, the particle-based visualization—all serve the same purpose: creating contemporary sacred space that honors grief without prescribing how to experience it. This isn't art therapy. It's not a grief support group. It's an exhibition that takes mourning seriously as subject matter and creates room for visitors to be present with loss—theirs and others'.
 
