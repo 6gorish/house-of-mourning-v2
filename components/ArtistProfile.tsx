@@ -70,29 +70,38 @@ export default function ArtistProfile({ content }: ArtistProfileProps) {
         const bioContent: HTMLElement[] = []
         
         while (currentElement && !['H2', 'H3', 'HR'].includes(currentElement.tagName)) {
-          // Skip the element containing the image reference
-          if (currentElement !== imageElement) {
-            bioContent.push(currentElement as HTMLElement)
-          }
+          // ALWAYS include the element - we'll clean it up later
+          bioContent.push(currentElement as HTMLElement)
           currentElement = currentElement.nextElementSibling
         }
 
-        bioContent.forEach(el => {
+        bioContent.forEach((el, index) => {
           const clone = el.cloneNode(true) as HTMLElement
           
-          // Remove any remaining "image:" text from content
+          // Remove any remaining "image:" text from content FIRST
+          const originalHTML = clone.innerHTML
           if (clone.textContent?.includes('image:')) {
-            clone.innerHTML = clone.innerHTML.replace(/\s*<strong>image:<\/strong>\s*[^\s<]+/gi, '')
-            clone.innerHTML = clone.innerHTML.replace(/\s*image:\s*[^\s<]+/gi, '')
+            clone.innerHTML = clone.innerHTML.replace(/\s*<strong>.*?image:.*?<\/strong>\s*[^\s<]*/gi, '')
+            clone.innerHTML = clone.innerHTML.replace(/\*\*image:.*?\*\*\s*[^\s<]*/gi, '')
+            clone.innerHTML = clone.innerHTML.replace(/image:\s*[^\s<\n]*/gi, '')
+            // Also remove any **image:** without strong tags
+            clone.innerHTML = clone.innerHTML.trim()
           }
           
-          // Style paragraphs
-          if (clone.tagName === 'P') {
+          // Check if this is the role line: first element, paragraph, starts with <em>
+          const startsWithEm = clone.tagName === 'P' && clone.innerHTML.trim().startsWith('<em>')
+          const isRole = index === 0 && startsWithEm
+          
+          if (isRole) {
+            // Style as subtitle/role
+            clone.className = 'text-lg md:text-xl font-light italic text-stone-600 mb-4 mt-1'
+          } else if (clone.tagName === 'P') {
+            // Style as regular paragraph
             clone.className = 'text-base md:text-lg font-light leading-relaxed text-stone-700'
           }
           
           // Only add if there's actual content left
-          if (clone.textContent?.trim()) {
+          if (clone.textContent?.trim() && clone.innerHTML.trim()) {
             bioColumn.appendChild(clone)
           }
         })
@@ -139,10 +148,6 @@ export default function ArtistProfile({ content }: ArtistProfileProps) {
         
         // Remove original bio content
         bioContent.forEach(el => el.remove())
-        // Remove image element
-        if (imageElement) {
-          imageElement.remove()
-        }
         
       } else {
         // Single-column layout for artists without images
@@ -163,11 +168,18 @@ export default function ArtistProfile({ content }: ArtistProfileProps) {
           currentElement = currentElement.nextElementSibling
         }
 
-        bioContent.forEach(el => {
+        bioContent.forEach((el, index) => {
           const clone = el.cloneNode(true) as HTMLElement
           
-          // Style paragraphs
-          if (clone.tagName === 'P') {
+          // Check if this is the role line: first element, paragraph, starts with <em>
+          const startsWithEm = clone.tagName === 'P' && clone.innerHTML.trim().startsWith('<em>')
+          const isRole = index === 0 && startsWithEm
+          
+          if (isRole) {
+            // Style as subtitle/role
+            clone.className = 'text-lg md:text-xl font-light italic text-stone-600 mb-4 mt-1'
+          } else if (clone.tagName === 'P') {
+            // Style as regular paragraph
             clone.className = 'text-base md:text-lg font-light leading-relaxed text-stone-700'
           }
           
