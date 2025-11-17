@@ -33,6 +33,19 @@ M.G. Clark is an ambient Americana musician influenced by a DIY ethos, neo-class
 
 ---
 
+## Carolina Ebeid
+*Poet, Video Artist*
+**image:** carolina-ebeid.jpg
+
+Carolina Ebeid is a multimedia poet. She is the author of You Ask Me to Talk About the Interior (Noemi Press, 2016) and the chapbook Dauerwunder: a brief record of facts (Albion Books, 2023). Her next book Hide is forthcoming from Graywolf Press in winter of 2026. Her work has been supported by the Stadler Center for Poetry at Bucknell University, Bread Loaf, CantoMundo, the NEA, and a residency fellowship from the Lannan Foundation. From 2023-2025 she is the Bonderman Assistant Professor of poetry at Brown University; she currently serves as an editor  at the multimedia zine Visible Binary. 
+
+
+[Instagram: @mybluedress](https://www.instagram.com/mybluedress)  
+[carolinaebeid.com](https://www.carolinaebeid.com)
+[visiblebinary.com](https://www.www.visiblebinary.com)
+
+---
+
 ## Sam Grabowska
 *Visual Artist*
 **image:** sam-grabowska.jpg
@@ -64,7 +77,7 @@ Lee Knight is a multidisciplinary artist and curator working at the intersection
 ---
 
 ### Jade Lascelles
-*Poetry/Spoken Word*
+*Poet, Musician*
 **image:** jade-lascelles.jpg
 
 Jade Lascelles is a writer, musician, and artist based in Colorado. She is the author of The Inevitable (Gesture Press), Violence Beside (Essay Press), and All Things Born | Proximate Seams (with visual artist Todd Edward Herman). Her work has appeared in The Rumpus, Women of Resistance: Poems for a New Feminism, the Bologna In Lettere festival’s International Poetry Review, and the visual art exhibits Shame Radiant, Joysome, and Disgust: Unhealthy Practices. She is a regular contributor to the interarts platform Girl Book and is featured in the Ed Bowes film Gold Hill and the Natalia Gaia short film A Spark Catches, which won second prize at the 2022 Maldito Festival de Videopoesia. Jade holds an MFA from the Jack Kerouac School of Disembodied Poetics at Naropa University and plays drums in a few different musical projects. 
@@ -74,7 +87,7 @@ Jade Lascelles is a writer, musician, and artist based in Colorado. She is the a
 ---
 
 ### Leah Nieboer
-*Poetry/Spoken Word*
+*Poet*
 **image:** leah-nieboer.jpg
 
 Leah Nieboer is a poet, Deep Listener, and the author of SOFT APOCALYPSE (UGA Press/Georgia Poetry Prize, 2023), which was named a top debut collection of 2023 by Poets & Writers Magazine. She holds an MFA in Poetry from the Warren Wilson MFA Program for Writers and a PhD in English from the University of Denver. Her recent work has been supported by grants and fellowships from the Center for Deep Listening at Rensselaer Polytechnic Institute, the Virginia Center for Creative Arts at Mt. San Angelo, and the Oberpfälzer Künstlerhaus at Kebbel Villa in Schwandorf, Germany. With Stella Corso, she co-hosts The Ritter, a fresh literary & cultural podcast.
@@ -86,18 +99,19 @@ Leah Nieboer is a poet, Deep Listener, and the author of SOFT APOCALYPSE (UGA Pr
 ---
 
 ### Jeffrey Pethybridge
-*Poetry/Spoken Word, Sound Artist*
-**image:**
+*Poet, Sound Artist*
+**image:** jeffrey-pethybridge.jpg
 
-[Bio to be added]
+Jeffrey Pethybridge is a poet, curator, and sound artist. He is the author of Force Drift, an Essay in the Epic (Tupelo 2025) a documentary project centered on the torture memos and the so-called global war on terrorism; and  Striven, The Bright Treatise (Noemi Press 2013) a collection of experimental and visual poetry written against the history of suicide and trauma. His work appears widely in journals such as Chicago Review, Volt, Best American Experimental Writing, The Iowa Review, New American Writing and others. He teaches  in the Jack Kerouac School of Disembodied Poetics at Naropa University where he is Co-Artistic Director of the Summer Writing Program. 
 
-[Website/Portfolio links]
+[Instagram: @jeffpethybridge]()
+[jeffreypethybridge.net](https://www.jeffreypethybridge.net)
 
 ---
 
 ## Valerie Tamplin
 *Visual Artist*
-**image:**
+**image:** valerie-tamplin.jpg
 
 Maine painter Valerie Tamplin (b. 1942) creates abstract and representational works that address timeless opposing forces in nature and the complexity of the human form. Working in oil, acrylic, watercolor, and assemblage, she explores New England coastal landscapes as expressions of elemental tensions, while rendering the body—at rest, in motion, grappling—with classical anatomical precision learned from Robert Beverly Hale. Her compositions juxtapose pattern, texture, and color, with palettes ranging from monochromatic abstractions to blue-dominated figurative paintings. Recurring curvilinear forms create rhythmic continuity across her diverse subjects. Tamplin's work appears in regional exhibitions and private collections nationally, with permanent installations in Brunswick, Maine.
 
@@ -109,7 +123,7 @@ Maine painter Valerie Tamplin (b. 1942) creates abstract and representational wo
 *Visual Artist, Musician, Interactive Developer*
 **image:** vigorish.jpg
 
-vigorish is a multidisciplinary artist whose work explores contemplative and transcendental experience in contemporary contexts. Drawing on an academic background in music and a professional career in technology, VI works fluidly across audio, video, code, language, and visual media. The practice builds on traditions of composition, sampling, and assemblage to create layered, immersive environments that invite reflection and emotional depth. For *The House of Mourning*, VI developed the generative soundscape and video, designed the interactive constellation visualization, and created the technical infrastructure allowing visitor contributions to become part of the living installation.
+vigorish is a multidisciplinary artist whose work explores contemplative and transcendental experience in contemporary contexts. Drawing on an academic background in music and a professional career in technology, vigorish works fluidly across audio, video, code, language, and visual media. Their practice builds on traditions of composition, sampling, and assemblage to create layered, immersive environments that invite reflection and emotional depth. For *The House of Mourning*, vigorish developed the generative soundscape and video, designed the interactive constellation visualization, and created the technical infrastructure allowing visitor contributions to become part of the living installation.
 
 [vigori.sh](https://www.vigori.sh)
 

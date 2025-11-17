@@ -7,10 +7,11 @@
  * Similarity factors:
  * - Temporal proximity (messages near in time)
  * - Length similarity (short vs long messages)
- * - Semantic keywords (future: keyword matching)
+ * - Semantic similarity (embedding-based theme matching)
  */
 
 import type { GriefMessage, MessagePoolConfig } from '@/types/grief-messages'
+import { cosineSimilarity } from '@/lib/semantic-encoding'
 
 /**
  * Calculate Similarity Score
@@ -46,9 +47,8 @@ export function calculateSimilarity(
     messageB.content.length
   )
 
-  // Semantic similarity (future: keyword matching)
-  // For now, return 0 since semantic analysis not implemented
-  const semantic = 0
+  // Semantic similarity (embedding-based)
+  const semantic = calculateSemanticSimilarity(messageA, messageB)
 
   // Weighted sum
   const totalWeight =
@@ -132,14 +132,14 @@ export function calculateLengthSimilarity(
 /**
  * Calculate Semantic Similarity
  *
- * Measures keyword/theme similarity between messages.
- * FUTURE FEATURE: Not implemented in MVP.
+ * Measures semantic/theme similarity between messages using embeddings.
+ * Uses cosine similarity between 10-dimensional embedding vectors.
  *
- * Planned approach:
- * 1. Extract keywords from message content
- * 2. Use semantic_tags JSON column from database
- * 3. Calculate cosine similarity between tag vectors
- * 4. Return score (0-1)
+ * Approach:
+ * 1. Check if both messages have semantic embeddings
+ * 2. Calculate cosine similarity between embedding vectors
+ * 3. Normalize to 0-1 range (cosine similarity is -1 to 1)
+ * 4. Return 0 if embeddings not available (fallback)
  *
  * @param messageA - First message
  * @param messageB - Second message
@@ -149,9 +149,37 @@ export function calculateSemanticSimilarity(
   messageA: GriefMessage,
   messageB: GriefMessage
 ): number {
-  // TODO: Implement keyword extraction and comparison
-  // For MVP, return 0 (no semantic analysis)
-  return 0
+  // Check if both messages have semantic embeddings
+  if (
+    !messageA.semantic_data?.embedding ||
+    !messageB.semantic_data?.embedding ||
+    !Array.isArray(messageA.semantic_data.embedding) ||
+    !Array.isArray(messageB.semantic_data.embedding) ||
+    messageA.semantic_data.embedding.length !== 10 ||
+    messageB.semantic_data.embedding.length !== 10
+  ) {
+    // No embeddings available - return 0 (no semantic similarity)
+    return 0
+  }
+
+  try {
+    // Calculate cosine similarity (-1 to 1)
+    const cosineSim = cosineSimilarity(
+      messageA.semantic_data.embedding,
+      messageB.semantic_data.embedding
+    )
+
+    // Normalize to 0-1 range
+    // Cosine similarity of -1 (opposite) → 0
+    // Cosine similarity of 0 (orthogonal) → 0.5
+    // Cosine similarity of 1 (identical) → 1
+    const normalized = (cosineSim + 1) / 2
+
+    return Math.min(1.0, Math.max(0.0, normalized))
+  } catch (error) {
+    console.error('Error calculating semantic similarity:', error)
+    return 0
+  }
 }
 
 /**

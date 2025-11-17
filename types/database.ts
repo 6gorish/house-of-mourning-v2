@@ -16,10 +16,15 @@ export interface Database {
           session_id: string | null;
           ip_hash: string | null;
           user_agent: string | null;
+          source: string | null;
           created_at: string;
           updated_at: string;
           deleted_at: string | null;
           semantic_tags: Record<string, number> | null;
+          semantic_data: {
+            embedding: number[];
+            generated_at: string;
+          } | null;
         };
         Insert: {
           id?: string;
@@ -30,10 +35,15 @@ export interface Database {
           session_id?: string | null;
           ip_hash?: string | null;
           user_agent?: string | null;
+          source?: string | null;
           created_at?: string;
           updated_at?: string;
           deleted_at?: string | null;
           semantic_tags?: Record<string, number> | null;
+          semantic_data?: {
+            embedding: number[];
+            generated_at: string;
+          } | null;
         };
         Update: {
           id?: string;
@@ -44,10 +54,15 @@ export interface Database {
           session_id?: string | null;
           ip_hash?: string | null;
           user_agent?: string | null;
+          source?: string | null;
           created_at?: string;
           updated_at?: string;
           deleted_at?: string | null;
           semantic_tags?: Record<string, number> | null;
+          semantic_data?: {
+            embedding: number[];
+            generated_at: string;
+          } | null;
         };
       };
     };

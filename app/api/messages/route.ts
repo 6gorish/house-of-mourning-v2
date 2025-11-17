@@ -6,6 +6,7 @@
 import { createClient } from '@/lib/supabase/server';
 import { NextRequest, NextResponse } from 'next/server';
 import crypto from 'crypto';
+import { getSemanticEmbedding } from '@/lib/semantic-encoding';
 
 // Rate limiting: max 3 submissions per session per hour
 const RATE_LIMIT = 3;
@@ -86,8 +87,13 @@ export async function POST(request: NextRequest) {
       .update(`${ip}:${ipSalt}`)
       .digest('hex');
 
-    // Get user agent
-    const userAgent = request.headers.get('user-agent') || 'unknown';
+    // Generate semantic embedding
+    console.log(`Generating embedding for: "${trimmedContent.substring(0, 50)}..."`)
+    const embedding = await getSemanticEmbedding(trimmedContent);
+
+    if (!embedding) {
+      console.warn('Failed to generate embedding, storing message without semantic data')
+    }
 
     // Create Supabase client
     const supabase = await createClient();
@@ -99,7 +105,11 @@ export async function POST(request: NextRequest) {
         content: trimmedContent,
         session_id: sessionId,
         ip_hash: ipHash,
-        user_agent: userAgent,
+        source: 'web',
+        semantic_data: embedding ? {
+          embedding,
+          generated_at: new Date().toISOString()
+        } : null,
         approved: true, // Public immediately for MVP
       })
       .select()
@@ -113,9 +123,11 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    console.log(`✅ Message ${data.id} stored ${embedding ? 'with' : 'without'} embedding`)
+
     // Return success
     return NextResponse.json(
-      { 
+      {
         success: true,
         message: data
       },

@@ -69,6 +69,18 @@ export interface GriefMessage {
    * @default null
    */
   deleted_at: string | null
+
+  /**
+   * Semantic embedding data
+   * Contains 10-dimensional vector representing semantic themes
+   * and timestamp of when it was generated.
+   *
+   * @default null (if embedding generation failed)
+   */
+  semantic_data?: {
+    embedding: number[]
+    generated_at: string
+  } | null
 }
 
 /**
@@ -495,6 +507,7 @@ export function toGriefMessage(dbMessage: Message): GriefMessage {
     content: dbMessage.content,
     created_at: dbMessage.created_at,
     approved: dbMessage.approved,
-    deleted_at: dbMessage.deleted_at
+    deleted_at: dbMessage.deleted_at,
+    semantic_data: dbMessage.semantic_data
   }
 }

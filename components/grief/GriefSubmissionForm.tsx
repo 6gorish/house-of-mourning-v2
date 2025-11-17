@@ -77,7 +77,7 @@ export default function GriefSubmissionForm() {
 
   return (
     <div className="max-w-2xl mx-auto">
-      <form onSubmit={handleSubmit} className="space-y-6">
+      <form onSubmit={handleSubmit} className="space-y-8">
         {/* Textarea */}
         <div>
           <label htmlFor="grief-content" className="sr-only">
@@ -90,23 +90,24 @@ export default function GriefSubmissionForm() {
             placeholder="What are you mourning?"
             maxLength={MAX_LENGTH}
             rows={6}
-            className="w-full px-6 py-4 
+            className="w-full px-6 py-5
                        bg-white border border-stone-200
                        text-base md:text-lg font-light leading-relaxed text-stone-900
-                       placeholder:text-stone-400
-                       focus:outline-none focus:ring-2 focus:ring-stone-400 focus:border-transparent
+                       placeholder:text-stone-400 placeholder:font-light
+                       focus:outline-none focus:ring-1 focus:ring-stone-400 focus:border-stone-400
                        resize-none
-                       transition-all duration-200"
+                       transition-all duration-200
+                       shadow-sm"
             disabled={isSubmitting}
           />
 
-          {/* Character counter */}
-          <div className="flex justify-between items-center mt-2 px-2">
-            <p className="text-sm text-stone-500">
+          {/* Character counter and helper text */}
+          <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-2 mt-3 px-1">
+            <p className="text-sm font-light text-stone-500 italic">
               A person, a relationship, a version of yourself, a future that won't arrive.
             </p>
             <p
-              className={`text-sm font-medium ${
+              className={`text-sm font-normal tabular-nums ${
                 remainingChars < 0
                   ? 'text-red-600'
                   : remainingChars < 50
@@ -120,7 +121,7 @@ export default function GriefSubmissionForm() {
         </div>
 
         {/* Submit button */}
-        <div className="flex justify-center">
+        <div className="flex justify-center pt-2">
           <button
             type="submit"
             disabled={!isValid || isSubmitting}
@@ -133,13 +134,13 @@ export default function GriefSubmissionForm() {
         {/* Status messages */}
         {submitStatus.type && (
           <div
-            className={`p-4 rounded-sm text-center ${
+            className={`p-5 text-center border ${
               submitStatus.type === 'success'
-                ? 'bg-green-50 text-green-900 border border-green-200'
-                : 'bg-red-50 text-red-900 border border-red-200'
+                ? 'bg-emerald-50 text-emerald-900 border-emerald-200'
+                : 'bg-red-50 text-red-900 border-red-200'
             }`}
           >
-            <p className="text-sm md:text-base font-normal">
+            <p className="text-sm md:text-base font-light leading-relaxed">
               {submitStatus.message}
             </p>
           </div>
@@ -147,19 +148,21 @@ export default function GriefSubmissionForm() {
       </form>
 
       {/* Privacy note */}
-      <div className="mt-12 pt-8 border-t border-stone-200">
-        <h3 className="text-lg font-normal text-stone-900 mb-3">Privacy & Moderation</h3>
-        <div className="space-y-2 text-sm text-stone-600">
+      <div className="mt-16 pt-12 border-t border-stone-200">
+        <h3 className="text-lg md:text-xl font-normal tracking-tight text-stone-900 mb-5">
+          Privacy & Moderation
+        </h3>
+        <div className="space-y-4 text-sm md:text-base font-light leading-relaxed text-stone-700">
           <p>
-            <strong>Anonymity:</strong> We do not collect email addresses or identifying information.
+            <strong className="font-normal text-stone-900">Anonymity:</strong> We do not collect email addresses or identifying information.
             Your submission is anonymous.
           </p>
           <p>
-            <strong>Public Display:</strong> Messages are displayed publicly as part of the installation—both
+            <strong className="font-normal text-stone-900">Public Display:</strong> Messages are displayed publicly as part of the installation—both
             at Truss House during December 19-20 and on this website as an ongoing archive.
           </p>
           <p>
-            <strong>Moderation:</strong> We review submissions to prevent abuse. We won't reject grief
+            <strong className="font-normal text-stone-900">Moderation:</strong> We review submissions to prevent abuse. We won't reject grief
             that's raw, angry, or difficult—but we will remove spam, harassment, and content that
             violates the space's intention.
           </p>
