@@ -182,9 +182,9 @@ export function ShaderBackground() {
     let animationFrameId: number
     const animate = () => {
       if (!material || !renderer || !scene) return
-      // Faster animation on mobile to compensate for lower framerate
+      // Separate animation speeds: slower on desktop for contemplative feel, moderate on mobile
       const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent)
-      material.uniforms.u_time.value += isMobile ? 0.02 : 0.01
+      material.uniforms.u_time.value += isMobile ? 0.0135 : 0.008
       renderer.render(scene, camera)
       animationFrameId = requestAnimationFrame(animate)
     }

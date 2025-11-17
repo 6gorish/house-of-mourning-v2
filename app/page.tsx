@@ -19,7 +19,7 @@ export default async function HomePage() {
     <PageTransition>
       <main>
       {/* Hero Section */}
-      <section className="relative min-h-[80vh] overflow-hidden">
+      <section className="relative min-h-[100dvh] md:min-h-[80vh] overflow-auto md:overflow-hidden">
         {/* Shader Background */}
         <ShaderBackground />
 
@@ -29,14 +29,14 @@ export default async function HomePage() {
         {/* Fallback gradient if shader fails */}
         <div className="absolute inset-0 bg-gradient-to-b from-stone-900 to-stone-800 -z-20" />
 
-        <div className="relative z-10 flex items-center min-h-[80vh]">
-          <div className="w-full max-w-6xl mx-auto px-6 md:px-12 py-32 md:py-40">
-            <div className="space-y-8 md:space-y-10 animate-fade-in">
-              <h1 className="text-6xl md:text-7xl font-serif font-light tracking-tight leading-tight text-white drop-shadow-2xl">
+        <div className="relative z-10 flex items-center min-h-[100dvh] md:min-h-[80vh] py-4">
+          <div className="w-full max-w-6xl mx-auto px-6 md:px-12 py-12 md:py-40">
+            <div className="space-y-5 md:space-y-10 animate-fade-in">
+              <h1 className="text-5xl sm:text-6xl md:text-7xl font-serif font-light tracking-tight leading-tight text-white drop-shadow-2xl">
                 The House of Mourning
               </h1>
 
-              <p className="text-xl md:text-2xl font-light leading-relaxed text-white/90 max-w-3xl">
+              <p className="text-lg sm:text-xl md:text-2xl font-light leading-relaxed text-white/90 max-w-3xl">
                 Grief witnessed collectively through art, sound, and language.
               </p>
 
