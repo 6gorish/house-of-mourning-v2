@@ -41,7 +41,7 @@ Carolina Ebeid is a multimedia poet. She is the author of You Ask Me to Talk Abo
 
 
 [Instagram: @mybluedress](https://www.instagram.com/mybluedress)  
-[carolinaebeid.com](https://www.carolinaebeid.com)
+[carolinaebeid.com](https://www.carolinaebeid.com)  
 [visiblebinary.com](https://www.www.visiblebinary.com)
 
 ---
@@ -105,7 +105,7 @@ Leah Nieboer is a poet, Deep Listener, and the author of SOFT APOCALYPSE (UGA Pr
 
 Jeffrey Pethybridge is a poet, curator, and sound artist. He is the author of Force Drift, an Essay in the Epic (Tupelo 2025) a documentary project centered on the torture memos and the so-called global war on terrorism; and  Striven, The Bright Treatise (Noemi Press 2013) a collection of experimental and visual poetry written against the history of suicide and trauma. His work appears widely in journals such as Chicago Review, Volt, Best American Experimental Writing, The Iowa Review, New American Writing and others. He teaches  in the Jack Kerouac School of Disembodied Poetics at Naropa University where he is Co-Artistic Director of the Summer Writing Program. 
 
-[Instagram: @jeffpethybridge]()
+[Instagram: @jeffpethybridge](https://www.instagram.com/jeffpethybridge)  
 [jeffreypethybridge.net](https://www.jeffreypethybridge.net)
 
 ---
