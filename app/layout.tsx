@@ -98,12 +98,12 @@ export default function RootLayout({
               {/* Site title */}
               <Link 
                 href="/" 
-                className="group relative"
+                className="group relative flex items-center"
               >
                 <span className="text-2xl md:text-3xl font-light tracking-tight text-stone-900 
                                transition-all duration-300 ease-out
                                group-hover:text-stone-600
-                               relative inline-block"
+                               relative inline-block leading-none"
                       style={{ fontFamily: 'var(--font-logo)' }}>
                   The House of Mourning
                   {/* Elegant underline on hover */}

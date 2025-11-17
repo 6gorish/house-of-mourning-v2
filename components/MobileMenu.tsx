@@ -184,7 +184,7 @@ export default function MobileMenu() {
       {/* Hamburger Button - Stays as hamburger, doesn't transform */}
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="md:hidden"
+        className="md:hidden flex items-center justify-center"
         style={{
           position: 'relative',
           padding: '8px',
