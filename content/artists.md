@@ -8,7 +8,7 @@ description: "Meet the artists and performers behind The House of Mourning"
 ## Two Flaneurs
 *Producer, Curator*
 
-Lee Knight is a multidisciplinary artist and curator working at the intersections of visual art, music, and experiential production. Lee curated exhibitions at 18th Street Arts Center in Santa Monica and led curatorial initiatives at SuperRare, working with emerging digital artists exploring themes of identity, ritual, and narrative. As Event Production Manager for ETHDenver, Lee produced large-scale creative programming integrating immersive art and performance with cutting-edge technology. As Black Wolf, Lee performs genre-defying electronic music and audiovisual works rooted in grief, resilience, and collective transformation. Previous work includes *Their Haus* (2019), a multidisciplinary performance event that transformed raw space into immersive sanctuary for drag, live music, and queer creative expression, praised for its intimacy, inclusivity, and emotional power.
+Two Flaneurs is an art collective founded by Lee Knight and VI Gorish, working at the intersections of music, audio, and visual media to explore transcendental experience in contemporary, secular contexts. Drawing on traditions of sacred aesthetics while filtering them through queer and neurodivergent perspectives, Two Flaneurs creates immersive installations and performance events that honor grief, ritual, and collective witness. Their practice asks what sacred space looks like when divorced from inherited belief systems—how technology and art can become transparent enough that viewers encounter previously unaware aspects of their own interiority. Previous collaborative work includes Their Haus (2019), a multidisciplinary performance event that transformed raw space into sanctuary for queer creative expression.
 
 **Contact:** contact@twoflaneurs.com
 
@@ -69,6 +69,7 @@ Kawaji is a Portland, ME-based selector specializing in underground UK bass musi
 
 ## Lee Knight
 *Visual Artist, Musician*
+**image:** lee-knight.jpg
 
 Lee Knight is a multidisciplinary artist and curator working at the intersections of visual art, music, and experiential production. Lee curated exhibitions at 18th Street Arts Center in Santa Monica and led curatorial initiatives at SuperRare, working with emerging digital artists exploring themes of identity, ritual, and narrative. As Event Production Manager for ETHDenver, Lee produced large-scale creative programming integrating immersive art and performance with cutting-edge technology. As Black Wolf, Lee performs genre-defying electronic music and audiovisual works rooted in grief, resilience, and collective transformation. Previous work includes *Their Haus* (2019), a multidisciplinary performance event that transformed raw space into immersive sanctuary for drag, live music, and queer creative expression, praised for its intimacy, inclusivity, and emotional power.
 
