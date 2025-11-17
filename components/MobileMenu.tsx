@@ -7,12 +7,22 @@ import { usePathname } from 'next/navigation';
 
 export default function MobileMenu() {
   const [isOpen, setIsOpen] = useState(false);
+  const [isAnimating, setIsAnimating] = useState(false);
   const [mounted, setMounted] = useState(false);
   const pathname = usePathname();
 
   useEffect(() => {
     setMounted(true);
   }, []);
+
+  // Close menu and trigger exit animation
+  const closeMenu = () => {
+    setIsAnimating(true);
+    setTimeout(() => {
+      setIsOpen(false);
+      setIsAnimating(false);
+    }, 300); // Match animation duration
+  };
 
   // Prevent body scroll when menu is open
   useEffect(() => {
@@ -26,11 +36,11 @@ export default function MobileMenu() {
     };
   }, [isOpen]);
 
-  const menuContent = isOpen && mounted ? (
+  const menuContent = (isOpen || isAnimating) && mounted ? (
     <>
-      {/* Semi-transparent Backdrop with fade-in */}
+      {/* Semi-transparent Backdrop with fade-in/out */}
       <div
-        onClick={() => setIsOpen(false)}
+        onClick={closeMenu}
         style={{
           position: 'fixed',
           top: 0,
@@ -39,11 +49,11 @@ export default function MobileMenu() {
           bottom: 0,
           backgroundColor: 'rgba(0, 0, 0, 0.5)',
           zIndex: 9997,
-          animation: 'fadeIn 300ms cubic-bezier(0.4, 0.0, 0.2, 1)'
+          animation: isAnimating ? 'fadeOut 300ms cubic-bezier(0.4, 0.0, 0.2, 1)' : 'fadeIn 300ms cubic-bezier(0.4, 0.0, 0.2, 1)'
         }}
       />
 
-      {/* Sidebar Panel - Slide in from right */}
+      {/* Sidebar Panel - Slide in/out from right */}
       <div
         style={{
           position: 'fixed',
@@ -57,12 +67,12 @@ export default function MobileMenu() {
           zIndex: 9998,
           boxShadow: '-4px 0 20px rgba(0, 0, 0, 0.15)',
           overflowY: 'auto',
-          animation: 'slideInRight 300ms cubic-bezier(0.4, 0.0, 0.2, 1)'
+          animation: isAnimating ? 'slideOutRight 300ms cubic-bezier(0.4, 0.0, 0.2, 1)' : 'slideInRight 300ms cubic-bezier(0.4, 0.0, 0.2, 1)'
         }}
       >
         {/* Close X Button - Pixel-perfect aligned with hamburger */}
         <button
-          onClick={() => setIsOpen(false)}
+          onClick={closeMenu}
           style={{
             position: 'absolute',
             top: '16px', // Matches nav py-4 (16px)
@@ -93,7 +103,7 @@ export default function MobileMenu() {
         }}>
           <Link
             href="/about"
-            onClick={() => setIsOpen(false)}
+            onClick={closeMenu}
             style={{
               display: 'block',
               fontSize: '16px',
@@ -109,7 +119,7 @@ export default function MobileMenu() {
 
           <Link
             href="/artists"
-            onClick={() => setIsOpen(false)}
+            onClick={closeMenu}
             style={{
               display: 'block',
               fontSize: '16px',
@@ -125,7 +135,7 @@ export default function MobileMenu() {
 
           <Link
             href="/event"
-            onClick={() => setIsOpen(false)}
+            onClick={closeMenu}
             style={{
               display: 'block',
               fontSize: '16px',
@@ -141,7 +151,7 @@ export default function MobileMenu() {
 
           <Link
             href="/participate"
-            onClick={() => setIsOpen(false)}
+            onClick={closeMenu}
             style={{
               display: 'block',
               marginTop: '24px',
@@ -170,9 +180,17 @@ export default function MobileMenu() {
             from { opacity: 0; }
             to { opacity: 1; }
           }
+          @keyframes fadeOut {
+            from { opacity: 1; }
+            to { opacity: 0; }
+          }
           @keyframes slideInRight {
             from { transform: translateX(100%); }
             to { transform: translateX(0); }
+          }
+          @keyframes slideOutRight {
+            from { transform: translateX(0); }
+            to { transform: translateX(100%); }
           }
         `
       }} />
@@ -181,15 +199,21 @@ export default function MobileMenu() {
 
   return (
     <>
-      {/* Hamburger Button - Stays as hamburger, doesn't transform */}
+      {/* Hamburger Button - Custom bars for perfect centering */}
       <button
-        onClick={() => setIsOpen(!isOpen)}
-        className="md:hidden flex items-center justify-center"
+        onClick={() => {
+          if (isOpen) {
+            closeMenu();
+          } else {
+            setIsOpen(true);
+          }
+        }}
+        className="md:hidden flex items-center justify-center self-center"
         style={{
           position: 'relative',
-          padding: '8px',
-          fontSize: '24px',
-          lineHeight: '1',
+          width: '40px',
+          height: '40px',
+          padding: '0',
           color: '#1c1917', // stone-900
           background: 'none',
           border: 'none',
@@ -199,7 +223,37 @@ export default function MobileMenu() {
         }}
         aria-label="Menu"
       >
-        ☰
+        <div style={{
+          display: 'flex',
+          flexDirection: 'column',
+          justifyContent: 'center',
+          alignItems: 'center',
+          gap: '5px',
+          width: '24px',
+          height: '24px'
+        }}>
+          <span style={{
+            display: 'block',
+            width: '24px',
+            height: '2px',
+            backgroundColor: '#1c1917',
+            transition: 'all 200ms cubic-bezier(0.4, 0.0, 0.2, 1)'
+          }} />
+          <span style={{
+            display: 'block',
+            width: '24px',
+            height: '2px',
+            backgroundColor: '#1c1917',
+            transition: 'all 200ms cubic-bezier(0.4, 0.0, 0.2, 1)'
+          }} />
+          <span style={{
+            display: 'block',
+            width: '24px',
+            height: '2px',
+            backgroundColor: '#1c1917',
+            transition: 'all 200ms cubic-bezier(0.4, 0.0, 0.2, 1)'
+          }} />
+        </div>
       </button>
 
       {/* Portal the menu to document.body */}

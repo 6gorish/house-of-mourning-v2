@@ -94,17 +94,17 @@ export default function RootLayout({
         {/* Navigation */}
         <nav className="border-b border-stone-200 bg-stone-50/95 backdrop-blur-sm sticky top-0 z-50 transition-elegant">
           <div className="max-w-6xl mx-auto px-6 md:px-12 py-4 md:py-6">
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between min-h-[40px]">
               {/* Site title */}
               <Link 
                 href="/" 
-                className="group relative flex items-center"
+                className="group relative flex items-center self-center"
               >
                 <span className="text-2xl md:text-3xl font-light tracking-tight text-stone-900 
                                transition-all duration-300 ease-out
                                group-hover:text-stone-600
                                relative inline-block leading-none"
-                      style={{ fontFamily: 'var(--font-logo)' }}>
+                      style={{ fontFamily: 'var(--font-logo)', display: 'flex', alignItems: 'center' }}>
                   The House of Mourning
                   {/* Elegant underline on hover */}
                   <span className="absolute bottom-0 left-0 w-0 h-[1px] bg-stone-900 
