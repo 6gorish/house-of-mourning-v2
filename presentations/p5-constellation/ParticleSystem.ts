@@ -138,8 +138,8 @@ export class ParticleSystem {
   }
 
   /**
-   * EMISSIVE RENDERING: Single sphere - clean and bright
-   * Multi-layer approach keeps darkening - staying simple
+   * EMISSIVE RENDERING - Simple and clean
+   * No sampling complexity yet - add that later for connection physics
    */
   private renderParticle(particle: Particle): void {
     this.p5.push()

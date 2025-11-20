@@ -1,8 +1,7 @@
 /**
  * Installation Layout
  * 
- * Custom layout for the installation view that removes nav/footer
- * and provides true fullscreen experience.
+ * Minimal layout - the page component handles fullscreen coverage.
  */
 
 export default function InstallationLayout({
@@ -10,5 +9,5 @@ export default function InstallationLayout({
 }: {
   children: React.ReactNode
 }) {
-  return children
+  return <>{children}</>
 }
