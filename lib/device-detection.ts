@@ -18,6 +18,7 @@ export interface DeviceConfig {
   // Shaders
   enableForegroundFog: boolean
   shaderQuality: 'high' | 'medium' | 'low'
+  shaderSpeedMultiplier: number  // Multiplier for shader animation speed
   
   // Connection lines
   connectionLineWidth: number
@@ -87,6 +88,7 @@ export function getDeviceConfig(): DeviceConfig {
         // Disable expensive fog shader
         enableForegroundFog: false,
         shaderQuality: 'low',
+        shaderSpeedMultiplier: 1.8,  // Faster animation on mobile
         
         // Thicker, more visible connection lines
         connectionLineWidth: 2,
@@ -110,6 +112,7 @@ export function getDeviceConfig(): DeviceConfig {
         // Keep fog but at lower quality
         enableForegroundFog: true,
         shaderQuality: 'medium',
+        shaderSpeedMultiplier: 1.3,  // Slightly faster on tablet
         
         // Slightly thicker lines
         connectionLineWidth: 1.5,
@@ -132,6 +135,7 @@ export function getDeviceConfig(): DeviceConfig {
         
         enableForegroundFog: true,
         shaderQuality: 'high',
+        shaderSpeedMultiplier: 1.0,  // Normal speed on desktop
         
         connectionLineWidth: 1,
         focusConnectionLineWidth: 3,
