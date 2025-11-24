@@ -11,6 +11,7 @@ const config: Config = {
       fontFamily: {
         sans: ['var(--font-inter)', 'system-ui', 'sans-serif'],
         serif: ['var(--font-playfair)', 'Georgia', 'serif'],
+        display: ['var(--font-cormorant)', 'Georgia', 'serif'],
       },
       colors: {
         background: 'var(--background)',

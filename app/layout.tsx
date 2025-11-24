@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import { Inter, Playfair_Display, Cinzel } from 'next/font/google';
+import { Inter, Playfair_Display, Cinzel, Cormorant_Garamond } from 'next/font/google';
 import ClientLayoutWrapper from '@/components/ClientLayoutWrapper';
 import './globals.css';
 
@@ -21,6 +21,14 @@ const logoFont = Cinzel({
   subsets: ['latin'],
   variable: '--font-logo',
   weight: ['400', '600'],
+  display: 'swap',
+});
+
+const cormorant = Cormorant_Garamond({
+  subsets: ['latin'],
+  variable: '--font-cormorant',
+  weight: ['300', '400', '500'],
+  style: ['normal', 'italic'],
   display: 'swap',
 });
 
@@ -60,7 +68,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" className={`${inter.variable} ${playfair.variable} ${logoFont.variable}`}>
+    <html lang="en" className={`${inter.variable} ${playfair.variable} ${logoFont.variable} ${cormorant.variable}`}>
       <body className="font-sans antialiased">
         <ClientLayoutWrapper>
           {children}

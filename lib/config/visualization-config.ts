@@ -203,8 +203,8 @@ export const VISUALIZATION_CONFIG: VisualizationConfig = {
   // Semi-transparent layer between background shader and particles
   // Allows bright, defined shader while maintaining dark aesthetic
   darkOverlay: {
-    color: { r: 10, g: 5, b: 30 },
-    opacity: 0.3,  // 0 = no overlay, 1 = fully opaque
+    color: { r: 0, g: 0, b: 0 }, // original value: { r: 10, g: 5, b: 30 }
+    opacity: 0.4,  // 0 = no overlay, 1 = fully opaque
   },
   
   // ===== FOREGROUND SHADER =====
