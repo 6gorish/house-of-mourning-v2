@@ -5,7 +5,7 @@ import dynamic from 'next/dynamic'
 import { createClient } from '@/lib/supabase/client'
 import { Orchestrator } from '@/presentations/p5-constellation/lib/Orchestrator'
 import type { FocusState } from '@/presentations/p5-constellation/lib/Orchestrator'
-import type { GriefMessage } from '@/lib/database/schema'
+import type { GriefMessage } from '@/types/grief-messages'
 import { VISUALIZATION_CONFIG } from '@/lib/config/visualization-config'
 import { positionMessages, type ParticleInfo, type ConnectionInfo, type MessageToPlace, type PlacedMessage } from '@/lib/message-positioning'
 
