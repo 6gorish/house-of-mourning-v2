@@ -25,6 +25,16 @@ const cosmicFragmentShader = `
 precision mediump float;
 uniform float u_time;
 uniform vec2 u_resolution;
+
+// Configurable uniforms from visualization-config.ts
+uniform float u_brightness;      // Overall output brightness (0.0-1.0)
+uniform vec3 u_tintColor;        // Purple/blue tint RGB (0-1 range)
+uniform float u_animSpeedX;      // Animation speed X
+uniform float u_animSpeedY;      // Animation speed Y
+uniform float u_noiseScale;      // Noise scale (lower = larger clouds)
+uniform float u_contrast;        // Contrast multiplier
+uniform float u_toneMapping;     // Tone mapping intensity
+
 varying vec2 vTexCoord;
 
 #define NUM_OCTAVES 4
@@ -59,7 +69,7 @@ float fbm(vec2 pos) {
 }
 
 void main() {
-    vec2 p = (gl_FragCoord.xy * 3.0 - u_resolution.xy) / min(u_resolution.x, u_resolution.y);
+    vec2 p = (gl_FragCoord.xy * u_noiseScale - u_resolution.xy) / min(u_resolution.x, u_resolution.y);
     p -= vec2(-12.0, 0.0);
     
     vec2 q = vec2(0.0);
@@ -67,19 +77,97 @@ void main() {
     q.y = fbm(p + vec2(1.0));
 
     vec2 r = vec2(0.0);
-    r.x = fbm(p + 1.0 * q + vec2(1.7, 1.2) + 0.15 * u_time * 2.0);
-    r.y = fbm(p + 1.0 * q + vec2(8.3, 2.8) + 0.126 * u_time * 2.0);
+    r.x = fbm(p + 1.0 * q + vec2(1.7, 1.2) + u_animSpeedX * u_time * 2.0);
+    r.y = fbm(p + 1.0 * q + vec2(8.3, 2.8) + u_animSpeedY * u_time * 2.0);
 
     float f = fbm(p + r);
 
-    vec3 baseCol = mix(vec3(0.0), vec3(1.0), clamp((f * f) * 5.5, 0.0, 1.0));
+    vec3 baseCol = mix(vec3(0.0), vec3(1.0), clamp((f * f) * u_contrast, 0.0, 1.0));
     baseCol = mix(baseCol, vec3(1.0), clamp(length(q), 0.0, 1.0));
-    baseCol = mix(baseCol, vec3(0.3, 0.2, 1.0), clamp(r.x, 0.0, 1.0));
+    baseCol = mix(baseCol, u_tintColor, clamp(r.x, 0.0, 1.0));
 
     vec3 finalColor = (f * f * f * 1.0 + 0.9 * f) * baseCol;
-    vec3 mapped = (finalColor * 2.5) / (1.0 + finalColor * 2.5);
+    vec3 mapped = (finalColor * u_toneMapping) / (1.0 + finalColor * u_toneMapping);
 
-    gl_FragColor = vec4(mapped * 0.3, 1.0);
+    gl_FragColor = vec4(mapped * u_brightness, 1.0);
+}
+`
+
+// Foreground shader - same FBM but outputs alpha based on fog density
+// Foggy areas are visible, void areas are transparent (particles show through)
+const foregroundFragmentShader = `
+precision mediump float;
+uniform float u_time;
+uniform vec2 u_resolution;
+
+uniform float u_brightness;
+uniform vec3 u_tintColor;
+uniform float u_animSpeedX;
+uniform float u_animSpeedY;
+uniform float u_noiseScale;
+uniform float u_contrast;
+uniform float u_toneMapping;
+
+varying vec2 vTexCoord;
+
+#define NUM_OCTAVES 4
+
+float random(vec2 pos) {
+    return fract(sin(dot(pos.xy, vec2(13.9898, 78.233))) * 43758.5453123);
+}
+
+float noise(vec2 pos) {
+    vec2 i = floor(pos);
+    vec2 f = fract(pos);
+    float a = random(i + vec2(0.0, 0.0));
+    float b = random(i + vec2(1.0, 0.0));
+    float c = random(i + vec2(0.0, 1.0));
+    float d = random(i + vec2(1.0, 1.0));
+    vec2 u = f * f * (3.0 - 2.0 * f);
+    return mix(a, b, u.x) + (c - a) * u.y * (1.0 - u.x) + (d - b) * u.x * u.y;
+}
+
+float fbm(vec2 pos) {
+    float v = 0.0;
+    float a = 0.5;
+    vec2 shift = vec2(100.0);
+    mat2 rot = mat2(cos(0.5), sin(0.5), -sin(0.5), cos(0.5));
+    for (int i = 0; i < NUM_OCTAVES; i++) {
+        float dir = mod(float(i), 2.0) > 0.5 ? 1.0 : -1.0;
+        v += a * noise(pos - 0.1 * dir * u_time * 2.0);
+        pos = rot * pos * 2.0 + shift;
+        a *= 0.5;
+    }
+    return v;
+}
+
+void main() {
+    // Offset position slightly for visual separation from background
+    vec2 p = (gl_FragCoord.xy * u_noiseScale - u_resolution.xy) / min(u_resolution.x, u_resolution.y);
+    p -= vec2(-8.0, 2.0);  // Different offset than background
+    
+    vec2 q = vec2(0.0);
+    q.x = fbm(p + 0.00 * u_time * 2.0);
+    q.y = fbm(p + vec2(1.0));
+
+    vec2 r = vec2(0.0);
+    r.x = fbm(p + 1.0 * q + vec2(1.7, 1.2) + u_animSpeedX * u_time * 2.0);
+    r.y = fbm(p + 1.0 * q + vec2(8.3, 2.8) + u_animSpeedY * u_time * 2.0);
+
+    float f = fbm(p + r);
+
+    vec3 baseCol = mix(vec3(0.0), vec3(1.0), clamp((f * f) * u_contrast, 0.0, 1.0));
+    baseCol = mix(baseCol, vec3(1.0), clamp(length(q), 0.0, 1.0));
+    baseCol = mix(baseCol, u_tintColor, clamp(r.x, 0.0, 1.0));
+
+    vec3 finalColor = (f * f * f * 1.0 + 0.9 * f) * baseCol;
+    vec3 mapped = (finalColor * u_toneMapping) / (1.0 + finalColor * u_toneMapping);
+    
+    // Alpha based on fog density - brighter areas = more fog = more opaque
+    float fogDensity = length(mapped);
+    float alpha = fogDensity * u_brightness;
+
+    gl_FragColor = vec4(mapped * u_brightness, alpha);
 }
 `
 
@@ -125,8 +213,10 @@ function ConnectionsTest() {
 
       const sketch = (p: any) => {
         let backgroundLayer: any
+        let foregroundLayer: any
         let particleLayer: any
         let cosmicShader: any
+        let foregroundShader: any
         let shaderTime = 0
         
         const particles = new Map<string, Particle>()
@@ -145,9 +235,15 @@ function ConnectionsTest() {
           const canvas = p.createCanvas(p.windowWidth, p.windowHeight)
           canvas.parent(containerRef.current!)
           
+          // Background shader layer
           backgroundLayer = p.createGraphics(p.width, p.height, p.WEBGL)
           cosmicShader = backgroundLayer.createShader(vertexShader, cosmicFragmentShader)
           
+          // Foreground shader layer (with alpha for transparency)
+          foregroundLayer = p.createGraphics(p.width, p.height, p.WEBGL)
+          foregroundShader = foregroundLayer.createShader(vertexShader, foregroundFragmentShader)
+          
+          // Particle layer (2D canvas for particles and connections)
           particleLayer = p.createGraphics(p.width, p.height)
           
           const supabase = createClient()
@@ -276,7 +372,8 @@ function ConnectionsTest() {
         p.draw = () => {
           const drawStart = performance.now()
           shaderTime += 0.016
-          p.background(10, 5, 20)
+          const { backgroundColor: bg } = VISUALIZATION_CONFIG
+          p.background(bg.r, bg.g, bg.b)
           
           // Calculate cluster age in seconds
           const clusterAge = (Date.now() - clusterStartTime) / 1000
@@ -286,16 +383,35 @@ function ConnectionsTest() {
           const timeline = getAnimationTimeline()
           
           // Background
+          const { backgroundColor, cosmicShader: shaderConfig, darkOverlay, foregroundShader: fgConfig } = VISUALIZATION_CONFIG
           backgroundLayer.clear()
-          backgroundLayer.background(10, 5, 20)
+          backgroundLayer.background(backgroundColor.r, backgroundColor.g, backgroundColor.b)
           backgroundLayer.shader(cosmicShader)
+          
+          // Core uniforms
           cosmicShader.setUniform('u_time', shaderTime)
           cosmicShader.setUniform('u_resolution', [backgroundLayer.width, backgroundLayer.height])
+          
+          // Configurable shader uniforms
+          cosmicShader.setUniform('u_brightness', shaderConfig.brightness)
+          cosmicShader.setUniform('u_tintColor', [shaderConfig.tintColor.r, shaderConfig.tintColor.g, shaderConfig.tintColor.b])
+          cosmicShader.setUniform('u_animSpeedX', shaderConfig.animationSpeedX)
+          cosmicShader.setUniform('u_animSpeedY', shaderConfig.animationSpeedY)
+          cosmicShader.setUniform('u_noiseScale', shaderConfig.noiseScale)
+          cosmicShader.setUniform('u_contrast', shaderConfig.contrast)
+          cosmicShader.setUniform('u_toneMapping', shaderConfig.toneMapping)
+          
           backgroundLayer.noStroke()
           backgroundLayer.rect(-backgroundLayer.width/2, -backgroundLayer.height/2, backgroundLayer.width, backgroundLayer.height)
           backgroundLayer.resetShader()
           
+          // Layer 1: Background shader
           p.image(backgroundLayer, 0, 0)
+          
+          // Layer 2: Dark overlay (semi-transparent to control overall darkness)
+          p.noStroke()
+          p.fill(darkOverlay.color.r, darkOverlay.color.g, darkOverlay.color.b, darkOverlay.opacity * 255)
+          p.rect(0, 0, p.width, p.height)
           
           particleLayer.clear()
           const ctx = particleLayer.drawingContext
@@ -366,27 +482,30 @@ function ConnectionsTest() {
             
             const isFocusNext = (conn.fromId === currentFocusId && conn.toId === currentNextId)
             
-            // Determine color and style
+            // Determine color and style using config values
+            const { connectionColors } = VISUALIZATION_CONFIG
+            const defaultCol = connectionColors.default
+            const focusCol = connectionColors.focus
             let r, g, b, opacity, lineWidth
             
             if (conn.isOldFocusNext) {
               // Old focus-next line: interpolate from red back to purple
               if (clusterAge <= timeline.incomingFocusNextStaysRedUntil) {
                 // Stay red
-                r = 255; g = 120; b = 100
+                r = focusCol.r; g = focusCol.g; b = focusCol.b
                 opacity = VISUALIZATION_CONFIG.focusConnectionOpacity
                 lineWidth = VISUALIZATION_CONFIG.focusConnectionWidth
               } else if (clusterAge < timeline.incomingFocusNextFadesBackEnd) {
                 // Interpolate red → purple
                 const progress = (clusterAge - timeline.incomingFocusNextStaysRedUntil) / (VISUALIZATION_CONFIG.animateOut / 1000)
-                r = 255 + (200 - 255) * progress
-                g = 120 + (180 - 120) * progress
-                b = 100 + (255 - 100) * progress
+                r = focusCol.r + (defaultCol.r - focusCol.r) * progress
+                g = focusCol.g + (defaultCol.g - focusCol.g) * progress
+                b = focusCol.b + (defaultCol.b - focusCol.b) * progress
                 opacity = VISUALIZATION_CONFIG.focusConnectionOpacity + (VISUALIZATION_CONFIG.defaultConnectionOpacity - VISUALIZATION_CONFIG.focusConnectionOpacity) * progress
                 lineWidth = VISUALIZATION_CONFIG.focusConnectionWidth + (VISUALIZATION_CONFIG.defaultConnectionWidth - VISUALIZATION_CONFIG.focusConnectionWidth) * progress
               } else {
                 // Purple (shouldn't reach here as it's removed)
-                r = 200; g = 180; b = 255
+                r = defaultCol.r; g = defaultCol.g; b = defaultCol.b
                 opacity = VISUALIZATION_CONFIG.defaultConnectionOpacity
                 lineWidth = VISUALIZATION_CONFIG.defaultConnectionWidth
               }
@@ -394,26 +513,26 @@ function ConnectionsTest() {
               // Current focus-next: interpolate from purple to red near end
               if (clusterAge < timeline.focusNextTurnsRedStart) {
                 // Purple
-                r = 200; g = 180; b = 255
+                r = defaultCol.r; g = defaultCol.g; b = defaultCol.b
                 opacity = VISUALIZATION_CONFIG.defaultConnectionOpacity
                 lineWidth = VISUALIZATION_CONFIG.defaultConnectionWidth
               } else if (clusterAge < timeline.focusNextTurnsRedEnd) {
                 // Interpolate purple → red
                 const progress = (clusterAge - timeline.focusNextTurnsRedStart) / (VISUALIZATION_CONFIG.animateIn / 1000)
-                r = 200 + (255 - 200) * progress
-                g = 180 + (120 - 180) * progress
-                b = 255 + (100 - 255) * progress
+                r = defaultCol.r + (focusCol.r - defaultCol.r) * progress
+                g = defaultCol.g + (focusCol.g - defaultCol.g) * progress
+                b = defaultCol.b + (focusCol.b - defaultCol.b) * progress
                 opacity = VISUALIZATION_CONFIG.defaultConnectionOpacity + (VISUALIZATION_CONFIG.focusConnectionOpacity - VISUALIZATION_CONFIG.defaultConnectionOpacity) * progress
                 lineWidth = VISUALIZATION_CONFIG.defaultConnectionWidth + (VISUALIZATION_CONFIG.focusConnectionWidth - VISUALIZATION_CONFIG.defaultConnectionWidth) * progress
               } else {
                 // Red
-                r = 255; g = 120; b = 100
+                r = focusCol.r; g = focusCol.g; b = focusCol.b
                 opacity = VISUALIZATION_CONFIG.focusConnectionOpacity
                 lineWidth = VISUALIZATION_CONFIG.focusConnectionWidth
               }
             } else {
               // Normal connection: always purple
-              r = 200; g = 180; b = 255
+              r = defaultCol.r; g = defaultCol.g; b = defaultCol.b
               opacity = VISUALIZATION_CONFIG.defaultConnectionOpacity
               lineWidth = VISUALIZATION_CONFIG.defaultConnectionWidth
             }
@@ -450,8 +569,10 @@ function ConnectionsTest() {
             
             if (particle.alpha < 0.01) return
             
-            // Determine color
+            // Determine color using config values
+            const { particleColors } = VISUALIZATION_CONFIG
             const isSpecial = isFocus || isNextTurningRed
+            const colors = isSpecial ? particleColors.focus : particleColors.default
             
             const sizeBrightness = 0.4 + ((particle.size - 2) / 4) * 0.6
             const totalBrightness = particle.alpha * sizeBrightness
@@ -461,19 +582,11 @@ function ConnectionsTest() {
               particle.x, particle.y, particle.size * 2.5
             )
             
-            if (isSpecial) {
-              // RED
-              gradient.addColorStop(0, `rgba(255, 100, 80, ${1.0 * totalBrightness})`)
-              gradient.addColorStop(0.4, `rgba(255, 90, 70, ${0.6 * totalBrightness})`)
-              gradient.addColorStop(0.7, `rgba(255, 90, 70, ${0.2 * totalBrightness})`)
-              gradient.addColorStop(1, 'rgba(255, 90, 70, 0)')
-            } else {
-              // YELLOW
-              gradient.addColorStop(0, `rgba(255, 220, 140, ${1.0 * totalBrightness})`)
-              gradient.addColorStop(0.4, `rgba(255, 200, 120, ${0.6 * totalBrightness})`)
-              gradient.addColorStop(0.7, `rgba(255, 200, 120, ${0.2 * totalBrightness})`)
-              gradient.addColorStop(1, 'rgba(255, 200, 120, 0)')
-            }
+            const { center, mid } = colors
+            gradient.addColorStop(0, `rgba(${center.r}, ${center.g}, ${center.b}, ${1.0 * totalBrightness})`)
+            gradient.addColorStop(0.4, `rgba(${mid.r}, ${mid.g}, ${mid.b}, ${0.6 * totalBrightness})`)
+            gradient.addColorStop(0.7, `rgba(${mid.r}, ${mid.g}, ${mid.b}, ${0.2 * totalBrightness})`)
+            gradient.addColorStop(1, `rgba(${mid.r}, ${mid.g}, ${mid.b}, 0)`)
             
             ctx.fillStyle = gradient
             ctx.beginPath()
@@ -481,7 +594,30 @@ function ConnectionsTest() {
             ctx.fill()
           })
           
+          // Layer 3: Particle layer (connections and particles)
           p.image(particleLayer, 0, 0)
+          
+          // Layer 4: Foreground shader (atmospheric fog over particles)
+          if (fgConfig.enabled) {
+            foregroundLayer.clear()
+            foregroundLayer.shader(foregroundShader)
+            
+            foregroundShader.setUniform('u_time', shaderTime)
+            foregroundShader.setUniform('u_resolution', [foregroundLayer.width, foregroundLayer.height])
+            foregroundShader.setUniform('u_brightness', fgConfig.brightness)
+            foregroundShader.setUniform('u_tintColor', [fgConfig.tintColor.r, fgConfig.tintColor.g, fgConfig.tintColor.b])
+            foregroundShader.setUniform('u_animSpeedX', fgConfig.animationSpeedX)
+            foregroundShader.setUniform('u_animSpeedY', fgConfig.animationSpeedY)
+            foregroundShader.setUniform('u_noiseScale', fgConfig.noiseScale)
+            foregroundShader.setUniform('u_contrast', fgConfig.contrast)
+            foregroundShader.setUniform('u_toneMapping', fgConfig.toneMapping)
+            
+            foregroundLayer.noStroke()
+            foregroundLayer.rect(-foregroundLayer.width/2, -foregroundLayer.height/2, foregroundLayer.width, foregroundLayer.height)
+            foregroundLayer.resetShader()
+            
+            p.image(foregroundLayer, 0, 0)
+          }
           
           const drawEnd = performance.now()
           
@@ -531,8 +667,13 @@ function ConnectionsTest() {
             particle.y = (particle.y / oldHeight) * p.height
           })
           
+          // Recreate all graphics layers at new size
           backgroundLayer = p.createGraphics(p.width, p.height, p.WEBGL)
           cosmicShader = backgroundLayer.createShader(vertexShader, cosmicFragmentShader)
+          
+          foregroundLayer = p.createGraphics(p.width, p.height, p.WEBGL)
+          foregroundShader = foregroundLayer.createShader(vertexShader, foregroundFragmentShader)
+          
           particleLayer = p.createGraphics(p.width, p.height)
         }
       }

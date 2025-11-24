@@ -9,6 +9,72 @@
 import { DEFAULT_CONFIG } from './message-pool-config'
 
 /**
+ * RGB Color type for shader uniforms
+ */
+export interface RGBColor {
+  r: number
+  g: number
+  b: number
+}
+
+/**
+ * Cosmic Shader Configuration
+ */
+export interface CosmicShaderConfig {
+  // Overall brightness multiplier (0.0 - 1.0, default 0.3)
+  brightness: number
+  
+  // Purple/blue tint color (RGB 0-1 range for shader)
+  tintColor: RGBColor
+  
+  // Animation speed multipliers
+  animationSpeedX: number
+  animationSpeedY: number
+  
+  // Noise scale - lower = larger cloud structures
+  noiseScale: number
+  
+  // Contrast multiplier for cloud definition
+  contrast: number
+  
+  // Tone mapping intensity
+  toneMapping: number
+}
+
+/**
+ * Foreground Shader Configuration
+ * Similar to cosmic shader but renders with alpha transparency
+ * so particles show through the voids
+ */
+export interface ForegroundShaderConfig extends CosmicShaderConfig {
+  // Whether foreground shader is enabled
+  enabled: boolean
+}
+
+/**
+ * Dark Overlay Configuration
+ * A semi-transparent layer between background shader and particles
+ * Allows brighter shader while maintaining dark overall aesthetic
+ */
+export interface DarkOverlayConfig {
+  // Overlay color (RGB 0-255)
+  color: RGBColor
+  
+  // Opacity (0.0 = transparent, 1.0 = fully opaque)
+  opacity: number
+}
+
+/**
+ * Particle Color Configuration (RGBA 0-255 range)
+ */
+export interface ParticleColorConfig {
+  // Center of glow gradient
+  center: RGBColor
+  // Mid-range of glow gradient  
+  mid: RGBColor
+}
+
+/**
  * Visualization Config Type
  */
 export interface VisualizationConfig {
@@ -35,6 +101,30 @@ export interface VisualizationConfig {
   // Particle Styling
   defaultParticleColor: string
   focusParticleColor: string
+  
+  // Background color (RGB 0-255)
+  backgroundColor: RGBColor
+  
+  // Cosmic shader settings (background layer)
+  cosmicShader: CosmicShaderConfig
+  
+  // Dark overlay between background shader and particles
+  darkOverlay: DarkOverlayConfig
+  
+  // Foreground shader settings (rendered over particles with alpha)
+  foregroundShader: ForegroundShaderConfig
+  
+  // Particle glow colors (RGB 0-255)
+  particleColors: {
+    default: ParticleColorConfig
+    focus: ParticleColorConfig
+  }
+  
+  // Connection line colors (RGB 0-255)
+  connectionColors: {
+    default: RGBColor
+    focus: RGBColor
+  }
 }
 
 /**
@@ -60,18 +150,18 @@ export const VISUALIZATION_CONFIG: VisualizationConfig = {
   // How long the incoming focus-next line stays red (after cluster transition)
   connectionFocusDuration: 6000,  // Stay red for 6 seconds (then 3s fade back)
   
-  // ===== COLORS =====
+  // ===== COLORS (legacy string names) =====
   // Focus particle and focus-next connection line color
-  focusColor: 'red',  // RGB: (255, 100, 80) in shader
+  focusColor: 'red',
   
   // Default connection line color
-  defaultConnectionColor: 'purple',  // RGB: (200, 180, 255) in shader
+  defaultConnectionColor: 'purple',
   
   // Default particle color
-  defaultParticleColor: 'yellow',  // RGB: (255, 220, 140) in shader
+  defaultParticleColor: 'yellow',
   
   // Red variant for focus particles
-  focusParticleColor: 'red',  // RGB: (255, 100, 80) in shader
+  focusParticleColor: 'red',
   
   // ===== OPACITY & STROKE =====
   // Default connection line styling
@@ -81,6 +171,88 @@ export const VISUALIZATION_CONFIG: VisualizationConfig = {
   // Focus-next connection line styling (when red)
   focusConnectionOpacity: 0.25,
   focusConnectionWidth: 3,
+  
+  // ===== BACKGROUND =====
+  // Deep purple-black background
+  backgroundColor: { r: 10, g: 5, b: 20 },
+  
+  // ===== COSMIC SHADER (BACKGROUND) =====
+  cosmicShader: {
+    // Overall brightness (0.0-1.0) - higher = brighter nebula
+    // Increased from 0.3 to allow more definition (darkOverlay controls final darkness)
+    brightness: 0.4,
+    
+    // Purple/blue tint (RGB 0-1 for shader)
+    tintColor: { r: 0.3, g: 0.2, b: 1.0 },
+    
+    // Animation speed - higher = faster cloud movement
+    animationSpeedX: 0.15,
+    animationSpeedY: 0.126,
+    
+    // Noise scale - lower = larger cloud structures
+    noiseScale: 3.0,
+    
+    // Contrast - higher = more defined clouds
+    contrast: 5.5,
+    
+    // Tone mapping - higher = more compressed dynamic range
+    toneMapping: 2.5,
+  },
+  
+  // ===== DARK OVERLAY =====
+  // Semi-transparent layer between background shader and particles
+  // Allows bright, defined shader while maintaining dark aesthetic
+  darkOverlay: {
+    color: { r: 10, g: 5, b: 30 },
+    opacity: 0.3,  // 0 = no overlay, 1 = fully opaque
+  },
+  
+  // ===== FOREGROUND SHADER =====
+  // Subtle atmospheric layer over particles for depth
+  foregroundShader: {
+    enabled: true,
+    
+    // Very low brightness - just adds subtle texture
+    brightness: 0.18,
+    
+    // Slightly different tint for depth separation
+    tintColor: { r: 0.2, g: 0.15, b: 0.8 },
+    
+    // Slower animation than background
+    animationSpeedX: 0.08,
+    animationSpeedY: 0.06,
+    
+    // Larger cloud structures (lower scale)
+    noiseScale: 2.0,
+    
+    // Lower contrast for softer effect
+    contrast: 4.0,
+    
+    // Tone mapping
+    toneMapping: 2.0,
+  },
+  
+  // ===== PARTICLE GLOW COLORS (RGB 0-255) =====
+  particleColors: {
+    // Default yellow/warm particles
+    default: {
+      center: { r: 255, g: 220, b: 140 },
+      mid: { r: 255, g: 200, b: 120 },
+    },
+    // Focus/highlighted red particles
+    focus: {
+      center: { r: 255, g: 100, b: 80 },
+      mid: { r: 255, g: 90, b: 70 },
+    },
+  },
+  
+  // ===== CONNECTION LINE COLORS (RGB 0-255) =====
+  connectionColors: {
+    // Default purple connection lines
+    default: { r: 200, g: 180, b: 255 },
+    // Focus-next red connection lines
+    focus: { r: 255, g: 120, b: 100 },
+  },
 }
 
 /**
