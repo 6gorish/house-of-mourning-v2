@@ -5,7 +5,7 @@
  */
 
 import type p5 from 'p5'
-import type { GriefMessage } from '@/types/database'
+import type { GriefMessage } from '@/types/grief-messages'
 
 export const CONFIG = {
   // Particle System
