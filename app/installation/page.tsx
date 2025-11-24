@@ -1021,13 +1021,18 @@ function ConnectionsTest() {
           >
             The House of Mourning
           </a>
-          <div className="flex items-center gap-4 md:gap-6">
+          <div className="flex items-center gap-3 md:gap-6">
             <a 
               href="/about" 
-              className="text-white/60 hover:text-white transition-colors text-xs md:text-sm"
+              className="text-white/60 hover:text-white transition-colors w-8 h-8 md:w-9 md:h-9 flex items-center justify-center rounded-full border border-white/30 hover:border-white/50 hover:bg-white/10"
               style={{ textShadow: '0 2px 8px rgba(0,0,0,0.8)' }}
+              title="About"
             >
-              About
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="12" cy="12" r="10"/>
+                <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/>
+                <line x1="12" y1="17" x2="12.01" y2="17"/>
+              </svg>
             </a>
             <a 
               href="/participate" 
