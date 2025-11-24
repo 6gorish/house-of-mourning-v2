@@ -53,13 +53,6 @@ export class DatabaseService {
     maxId?: number
   ): Promise<GriefMessage[]> {
     try {
-      console.log('[DATABASE_SERVICE] Fetching batch:', {
-        cursor,
-        limit,
-        direction,
-        maxId
-      })
-
       let query = this.client
         .from('messages')
         .select('id, content, created_at, approved, deleted_at')
@@ -97,14 +90,11 @@ export class DatabaseService {
       // Convert to GriefMessage format
       const messages = data.map(toGriefMessage)
 
-      console.log(`[DATABASE_SERVICE] Fetched ${messages.length} messages`)
-
       // Reset retry delay on success
       this.retryDelay = 1000
 
       return messages
     } catch (error) {
-      console.error('[DATABASE_SERVICE] Fetch batch failed:', error)
       return await this.handleQueryError(
         error,
         'fetchBatchWithCursor',
@@ -149,9 +139,7 @@ export class DatabaseService {
       const messages = data.map(toGriefMessage)
 
       if (messages.length > 0) {
-        console.log(
-          `[DATABASE_SERVICE] Found ${messages.length} new messages above watermark ${watermark}`
-        )
+        // Found new messages (silent)
       }
 
       // Reset retry delay on success
@@ -159,7 +147,6 @@ export class DatabaseService {
 
       return messages
     } catch (error) {
-      console.error('[DATABASE_SERVICE] New message polling failed:', error)
       return await this.handleQueryError(
         error,
         'fetchNewMessagesAboveWatermark',
@@ -195,21 +182,17 @@ export class DatabaseService {
       }
 
       if (!data || data.length === 0) {
-        console.log('[DATABASE_SERVICE] No messages in database, returning 0')
         return 0
       }
 
       // Type assertion for query result
       const maxId = parseInt((data[0] as { id: string }).id, 10)
 
-      console.log(`[DATABASE_SERVICE] Max message ID: ${maxId}`)
-
       // Reset retry delay on success
       this.retryDelay = 1000
 
       return maxId
     } catch (error) {
-      console.error('[DATABASE_SERVICE] Get max ID failed:', error)
       return await this.handleQueryError(error, 'getMaxMessageId', () =>
         this.getMaxMessageId()
       )
@@ -258,15 +241,11 @@ export class DatabaseService {
 
       const griefMessage = toGriefMessage(data)
 
-      console.log(`[DATABASE_SERVICE] Inserted message ${griefMessage.id}`)
-
       // Reset retry delay on success
       this.retryDelay = 1000
 
       return griefMessage
     } catch (error) {
-      console.error('[DATABASE_SERVICE] Add message failed:', error)
-
       // Don't retry inserts - return null
       return null
     }
@@ -294,14 +273,11 @@ export class DatabaseService {
 
       const totalCount = count || 0
 
-      console.log(`[DATABASE_SERVICE] Total messages: ${totalCount}`)
-
       // Reset retry delay on success
       this.retryDelay = 1000
 
       return totalCount
     } catch (error) {
-      console.error('[DATABASE_SERVICE] Get count failed:', error)
       return await this.handleQueryError(error, 'getMessageCount', () =>
         this.getMessageCount()
       )
@@ -324,14 +300,11 @@ export class DatabaseService {
         .limit(1)
 
       if (error) {
-        console.error('[DATABASE_SERVICE] Connection test failed:', error)
         return false
       }
 
-      console.log('[DATABASE_SERVICE] Connection test succeeded')
       return true
     } catch (error) {
-      console.error('[DATABASE_SERVICE] Connection test error:', error)
       return false
     }
   }
@@ -354,18 +327,9 @@ export class DatabaseService {
   ): Promise<T> {
     // Check if we should retry
     if (this.retryDelay >= this.maxRetryDelay) {
-      console.error(
-        `[DATABASE_SERVICE] ${operation} - Max retry delay reached, giving up`
-      )
-
       // Return empty result (type-safe default)
       return ([] as any) as T
     }
-
-    // Log retry
-    console.warn(
-      `[DATABASE_SERVICE] ${operation} - Retrying in ${this.retryDelay}ms`
-    )
 
     // Wait before retry
     await new Promise((resolve) => setTimeout(resolve, this.retryDelay))
@@ -389,7 +353,6 @@ export class DatabaseService {
    * Currently no-op, but reserved for future connection pooling.
    */
   cleanup(): void {
-    console.log('[DATABASE_SERVICE] Cleanup called')
     // Future: Close connection pool if needed
   }
 }

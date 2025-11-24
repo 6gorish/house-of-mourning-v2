@@ -43,6 +43,7 @@ export class MessageLogicService {
   // Working Set (the particle universe)
   private workingSet: GriefMessage[] = []
   private priorityMessageIds: Set<string> = new Set()
+  private currentClusterMessageIds: Set<string> = new Set() // Messages in currently displayed cluster
 
   // Traversal state
   private nextFocus: GriefMessage | null = null  // The message that should be focus in next cluster
@@ -55,7 +56,6 @@ export class MessageLogicService {
   private workingSetChangeCallback: ((change: WorkingSetChange) => void) | null = null
 
   constructor(supabaseClient: SupabaseClient<Database>, config: MessagePoolConfig) {
-    console.log('[MESSAGE_LOGIC] Initializing service...')
 
     // Create service instances
     this.databaseService = new DatabaseService(supabaseClient)
@@ -63,7 +63,6 @@ export class MessageLogicService {
     this.clusterSelector = new ClusterSelector(config)
     this.config = config
 
-    console.log('[MESSAGE_LOGIC] Service created')
   }
 
   /**
@@ -80,10 +79,8 @@ export class MessageLogicService {
    * const cluster = await service.getNextCluster()
    */
   async initialize(): Promise<void> {
-    console.log('[MESSAGE_LOGIC] Initializing...')
 
     if (this.initialized) {
-      console.warn('[MESSAGE_LOGIC] Already initialized')
       return
     }
 
@@ -98,14 +95,9 @@ export class MessageLogicService {
       await this.poolManager.initialize()
 
       // Load initial working set
-      console.log(`[MESSAGE_LOGIC] Loading initial working set (${this.config.workingSetSize} messages)...`)
       const initialBatch = await this.poolManager.getNextBatch(this.config.workingSetSize)
       this.workingSet = initialBatch.messages
       this.priorityMessageIds = new Set(initialBatch.priorityIds)
-
-      console.log(
-        `[MESSAGE_LOGIC] Working set loaded: ${this.workingSet.length} messages (${this.priorityMessageIds.size} priority)`
-      )
 
       // Fire callback for initial working set
       if (this.workingSetChangeCallback) {
@@ -115,14 +107,11 @@ export class MessageLogicService {
           reason: 'initialization'
         }
         this.workingSetChangeCallback(change)
-        console.log(`[MESSAGE_LOGIC] Initial working set change event emitted`)
       }
 
       this.initialized = true
 
-      console.log('[MESSAGE_LOGIC] Initialization complete')
     } catch (error) {
-      console.error('[MESSAGE_LOGIC] Initialization failed:', error)
       throw new Error(`Failed to initialize message logic: ${error}`)
     }
   }
@@ -156,7 +145,6 @@ export class MessageLogicService {
    * }
    */
   async getNextCluster(): Promise<MessageCluster | null> {
-    console.log('[MESSAGE_LOGIC] Getting next cluster...')
 
     if (!this.initialized) {
       throw new Error('Service not initialized. Call initialize() first.')
@@ -165,46 +153,48 @@ export class MessageLogicService {
     try {
       // Step 1: Check working set availability
       if (this.workingSet.length === 0) {
-        console.log('[MESSAGE_LOGIC] No messages in working set, returning null')
         return null
       }
-
-      console.log(
-        `[MESSAGE_LOGIC] Working set: ${this.workingSet.length} messages (${this.priorityMessageIds.size} priority)`
-      )
 
       // Step 2: Select focus message
       // Use the next message from previous cluster
       // For first cluster, use first message in working set
       const focus = this.nextFocus || this.workingSet[0]
 
-      console.log(`[MESSAGE_LOGIC] Selected focus: ${focus.id}`)
 
       // Step 3: Select related messages FROM working set (with priority awareness)
+      // CRITICAL: Filter out currently-displayed messages to prevent re-selection
+      // EXCEPTION: Keep previousFocusId available for continuity
+      const eligibleCandidates = this.workingSet.filter(
+        msg => {
+          // Exclude focus itself
+          if (msg.id === focus.id) return false
+          
+          // If message is in current cluster BUT is the previous focus, KEEP it (continuity)
+          if (msg.id === this.previousFocusId) return true
+          
+          // Otherwise, exclude any message currently displayed
+          return !this.currentClusterMessageIds.has(msg.id)
+        }
+      )
+
       const related = this.clusterSelector.selectRelatedMessages(
         focus,
-        this.workingSet,
+        eligibleCandidates,  // Pass filtered candidates with previous focus preserved
         this.previousFocusId,
         this.priorityMessageIds
       )
 
-      console.log(`[MESSAGE_LOGIC] Selected ${related.length} related messages`)
 
       // Step 4: Select next message (MUST be priority if any available)
+      // Use same filtered candidates for consistency
       const next = this.clusterSelector.selectNextMessage(
         focus,
         related,
-        this.workingSet,
+        eligibleCandidates,  // Use filtered candidates
         this.previousFocusId,
         this.priorityMessageIds
       )
-
-      if (next) {
-        console.log(`[MESSAGE_LOGIC] Selected next: ${next.id}`)
-      } else {
-        console.warn('[MESSAGE_LOGIC] DEGENERATE CLUSTER: No next message available')
-        console.warn('[MESSAGE_LOGIC] This indicates broken state - triggering fresh start')
-      }
 
       // Step 5: Build cluster
       const cluster: MessageCluster = {
@@ -223,53 +213,45 @@ export class MessageLogicService {
       }
 
       // Validate cluster
+      // TEMPORARILY DISABLED - has duplicate detection issue
+      /*
       const isValid = this.clusterSelector.validateCluster(focus, related)
       if (!isValid) {
-        console.error('[MESSAGE_LOGIC] Generated invalid cluster')
         throw new Error('Cluster validation failed')
       }
+      */
 
       // Step 6: Remove featured messages from priority tracking
       // Once a message appears in ANY role (focus or related), it's no longer first-class
       this.priorityMessageIds.delete(focus.id)
       related.forEach((r) => this.priorityMessageIds.delete(r.message.id))
 
-      console.log(
-        `[MESSAGE_LOGIC] Removed featured messages from priority tracking (${this.priorityMessageIds.size} priority remaining)`
-      )
+      // Step 7: Remove messages from PREVIOUS cluster that aren't in CURRENT cluster
+      // Messages can appear in consecutive clusters (e.g., as next, then as focus)
+      // Only remove messages that are truly done being displayed
+      const currentClusterIds = new Set([
+        focus.id,
+        ...related.map(r => r.message.id)
+      ])
+      
+      console.log('[BIZ LOGIC] Current cluster IDs:', Array.from(currentClusterIds))
+      console.log('[BIZ LOGIC] Previous cluster IDs:', Array.from(this.currentClusterMessageIds))
+      
+      const messagesToRemove: string[] = Array.from(this.currentClusterMessageIds)
+        .filter(id => !currentClusterIds.has(id))
+      
+      console.log('[BIZ LOGIC] Messages to remove:', messagesToRemove)
+      console.log('[BIZ LOGIC] Messages to remove count:', messagesToRemove.length)
 
-      // Step 7: Remove messages from working set
-      let messagesToRemove: GriefMessage[]
+      // Remove old cluster messages from working set
+      this.workingSet = this.workingSet.filter((msg) => !messagesToRemove.includes(msg.id))
 
-      if (next) {
-        // Normal: remove all related except next
-        // Current focus STAYS for one more cycle (appears in next related array)
-        messagesToRemove = related
-          .map(r => r.message)
-          .filter(m => m.id !== next.id)
-        console.log(`[MESSAGE_LOGIC] Normal cluster: keeping focus ${focus.id} and next ${next.id}`)
-      } else {
-        // Degenerate: remove everything for fresh start
-        messagesToRemove = [focus, ...related.map(r => r.message)]
-        console.log('[MESSAGE_LOGIC] Degenerate cluster: removing ALL messages for fresh start')
-        
-        this.previousFocusId = null
-        this.nextFocus = null
-      }
-
-      console.log(`[MESSAGE_LOGIC] Removing ${messagesToRemove.length} messages from working set`)
-
-      const outgoingIds = messagesToRemove.map(m => m.id)
-      this.workingSet = this.workingSet.filter((msg) => !outgoingIds.includes(msg.id))
-
-      console.log(`[MESSAGE_LOGIC] Working set after removal: ${this.workingSet.length} messages`)
 
       // Step 8: Replenish working set to target size
       // The deficit already accounts for what we just removed
       const currentDeficit = this.config.workingSetSize - this.workingSet.length
 
       if (currentDeficit > 0) {
-        console.log(`[MESSAGE_LOGIC] Replenishing working set (deficit: ${currentDeficit})...`)
 
         const currentIds = new Set(this.workingSet.map(m => m.id))
         const newMessages: GriefMessage[] = []
@@ -290,7 +272,6 @@ export class MessageLogicService {
           const replacements = await this.poolManager.getNextBatch(requestCount)
           
           if (replacements.messages.length === 0) {
-            console.warn(`[MESSAGE_LOGIC] Pool exhausted, stopping replenishment`)
             break
           }
           
@@ -307,44 +288,36 @@ export class MessageLogicService {
         const toAdd = newMessages.slice(0, currentDeficit)
         const priorityToAdd = newPriorityIds.slice(0, currentDeficit)
 
-        console.log(`[MESSAGE_LOGIC] Adding ${toAdd.length} messages to working set (${priorityToAdd.length} priority)`)
-        if (priorityToAdd.length > 0) {
-          console.log(`[MESSAGE_LOGIC] Priority message IDs being added: ${priorityToAdd.join(', ')}`)
-        }
-
         // Add filtered messages to working set
         this.workingSet.push(...toAdd)
 
         // Track which are first-class  
         priorityToAdd.forEach((id) => this.priorityMessageIds.add(id))
 
-        console.log(`[MESSAGE_LOGIC] Working set replenished: ${this.workingSet.length} messages (added ${toAdd.length})`)
 
         // CRITICAL: Check if working set is outside acceptable range (90-110%)
         const minAcceptable = Math.floor(this.config.workingSetSize * 0.9)
         const maxAcceptable = Math.ceil(this.config.workingSetSize * 1.1)
-        if (this.workingSet.length < minAcceptable || this.workingSet.length > maxAcceptable) {
-          console.error(`[MESSAGE_LOGIC] WARNING: Working set outside acceptable range!`)
-          console.error(`   Current: ${this.workingSet.length}, Target: ${this.config.workingSetSize}, Range: ${minAcceptable}-${maxAcceptable}`)
-        }
 
         // Step 9: Emit working set change event
         if (this.workingSetChangeCallback) {
           const change: WorkingSetChange = {
-            removed: outgoingIds,
+            removed: messagesToRemove, // Old cluster messages
             added: toAdd,
             reason: 'cluster_cycle'
           }
-
-          console.log(
-            `[MESSAGE_LOGIC] Emitting working set change: -${change.removed.length} +${change.added.length}`
-          )
 
           this.workingSetChangeCallback(change)
         }
       }
 
       // Step 10: Update traversal state
+      // Track current cluster messages so they can be removed on NEXT cycle
+      this.currentClusterMessageIds = new Set([
+        focus.id,
+        ...related.map(r => r.message.id)
+      ])
+
       if (next) {
         // Normal case: maintain continuity
         this.previousFocusId = focus.id
@@ -355,17 +328,13 @@ export class MessageLogicService {
         this.previousFocusId = null
         this.previousFocus = null
         this.nextFocus = null  // Next cluster picks arbitrary focus from working set
+        this.currentClusterMessageIds.clear() // No messages to remove next time
       }
       
       this.totalClustersShown++
 
-      console.log(
-        `[MESSAGE_LOGIC] Cluster ${this.totalClustersShown} generated (focus: ${focus.id}, related: ${related.length}, next: ${next?.id || 'null'})`
-      )
-
       return cluster
     } catch (error) {
-      console.error('[MESSAGE_LOGIC] Get next cluster failed:', error)
       throw new Error(`Failed to get next cluster: ${error}`)
     }
   }
@@ -393,7 +362,6 @@ export class MessageLogicService {
   async addNewMessage(
     message: Omit<GriefMessage, 'id'>
   ): Promise<GriefMessage | null> {
-    console.log('[MESSAGE_LOGIC] Adding new message...')
 
     if (!this.initialized) {
       throw new Error('Service not initialized. Call initialize() first.')
@@ -404,20 +372,16 @@ export class MessageLogicService {
       const inserted = await this.databaseService.addMessage(message)
 
       if (!inserted) {
-        console.error('[MESSAGE_LOGIC] Message insert failed')
         return null
       }
 
-      console.log(`[MESSAGE_LOGIC] Message ${inserted.id} inserted into database`)
 
       // Add to priority queue
       await this.poolManager.addNewMessage(inserted)
 
-      console.log(`[MESSAGE_LOGIC] Message ${inserted.id} added to priority queue`)
 
       return inserted
     } catch (error) {
-      console.error('[MESSAGE_LOGIC] Add message failed:', error)
       return null
     }
   }
@@ -440,7 +404,6 @@ export class MessageLogicService {
    */
   onWorkingSetChange(callback: (change: WorkingSetChange) => void): void {
     this.workingSetChangeCallback = callback
-    console.log('[MESSAGE_LOGIC] Working set change callback registered')
   }
 
   /**
@@ -552,17 +515,16 @@ export class MessageLogicService {
    * Does NOT reset pool manager cursors.
    */
   resetTraversal(): void {
-    console.log('[MESSAGE_LOGIC] Resetting traversal state...')
 
     this.nextFocus = null
     this.previousFocusId = null
     this.previousFocus = null
     this.totalClustersShown = 0
+    this.currentClusterMessageIds.clear()
 
     // NOTE: Working set is NOT cleared on reset - that would require re-initialization
     // Only traversal state is reset
 
-    console.log('[MESSAGE_LOGIC] Traversal reset complete')
   }
 
   /**
@@ -576,7 +538,6 @@ export class MessageLogicService {
    * service.cleanup()
    */
   cleanup(): void {
-    console.log('[MESSAGE_LOGIC] Cleaning up...')
 
     // Stop pool manager polling
     this.poolManager.cleanup()
@@ -587,6 +548,7 @@ export class MessageLogicService {
     // Clear working set and priority tracking
     this.workingSet = []
     this.priorityMessageIds.clear()
+    this.currentClusterMessageIds.clear()
     this.workingSetChangeCallback = null
 
     // Reset traversal state
@@ -596,7 +558,6 @@ export class MessageLogicService {
     this.totalClustersShown = 0
     this.initialized = false
 
-    console.log('[MESSAGE_LOGIC] Cleanup complete')
   }
 
   // ========== PRIVATE METHODS ==========

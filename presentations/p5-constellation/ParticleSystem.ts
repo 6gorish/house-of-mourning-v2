@@ -19,6 +19,8 @@ export class ParticleSystem {
   private particles: Map<string, Particle> = new Map()
   private p5: p5
   private frame: number = 0
+  private focusId: string | null = null
+  private nextId: string | null = null
 
   constructor(p5Instance: p5) {
     this.p5 = p5Instance
@@ -39,6 +41,16 @@ export class ParticleSystem {
         this.createParticle(message)
       }
     }
+  }
+
+  /**
+   * Set Focus State
+   * 
+   * Update which particles should be visually marked as focus/next.
+   */
+  setFocusState(focusId: string | null, nextId: string | null): void {
+    this.focusId = focusId
+    this.nextId = nextId
   }
 
   private createParticle(message: GriefMessage): void {
@@ -97,8 +109,6 @@ export class ParticleSystem {
   update(): void {
     this.frame++
 
-    const breatheOffset = Math.sin(this.frame * 0.008) * 1.5
-
     for (const [id, particle] of Array.from(this.particles.entries())) {
       if (particle.fadeOut) {
         particle.brightness -= CONFIG.PARTICLE_FADE_OUT_SPEED
@@ -118,7 +128,8 @@ export class ParticleSystem {
         particle.size = Math.max(CONFIG.PARTICLE_BASE_SIZE, particle.size - CONFIG.PARTICLE_SIZE_DECAY)
       }
 
-      particle.position.y = particle.originalPosition.y + (breatheOffset * 0.1)
+      // PARTICLES ARE STATIONARY - position stays at originalPosition
+      // NO MOVEMENT
     }
   }
 
@@ -150,15 +161,33 @@ export class ParticleSystem {
     const cameraZ = 800
     const distFromCamera = cameraZ - particle.position.z
     const scaleFactor = this.p5.map(distFromCamera, 650, 950, 1.3, 0.7)
-    const renderSize = particle.size * scaleFactor
+    let renderSize = particle.size * scaleFactor
 
     // Very aggressive distance-based dimming for strong depth
     const distanceDim = this.p5.map(distFromCamera, 650, 950, 1.0, 0.25)
     
     // Use color values directly as RGB (not HSL)
-    const r = particle.color.h  // Actually RGB values stored in h/s/l fields
-    const g = particle.color.s
-    const b = particle.color.l
+    let r = particle.color.h  // Actually RGB values stored in h/s/l fields
+    let g = particle.color.s
+    let b = particle.color.l
+
+    // Visual markers for focus and next particles
+    const isFocus = this.focusId === particle.id
+    const isNext = this.nextId === particle.id
+
+    if (isFocus) {
+      // Focus particle: 2x size, bright white
+      renderSize *= 2.0
+      r = 255
+      g = 255
+      b = 255
+    } else if (isNext) {
+      // Next particle: 1.5x size, bright blue
+      renderSize *= 1.5
+      r = 100
+      g = 150
+      b = 255
+    }
 
     // For emissive materials, boost to visible range
     const boost = 1.5

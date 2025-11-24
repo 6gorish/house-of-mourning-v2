@@ -18,7 +18,15 @@ export default function ClientLayoutWrapper({
   children: React.ReactNode
 }) {
   const pathname = usePathname()
-  const isInstallation = pathname === '/installation'
+  // Installation and test routes get no chrome (full-screen canvas)
+  const isInstallation = pathname === '/installation' || 
+                         pathname === '/constellation-preview' ||
+                         pathname === '/constellation-preview-light' ||
+                         pathname === '/constellation-api' ||
+                         pathname === '/hover-test' ||
+                         pathname === '/multi-layer-test' ||
+                         pathname === '/glow-test' ||
+                         pathname === '/shader-test'
 
   if (isInstallation) {
     // Installation route: no nav, no footer

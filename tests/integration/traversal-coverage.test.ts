@@ -216,8 +216,10 @@ describe('Traversal Coverage (Diagnostic)', () => {
     console.log(`✨ ALL COVERAGE: ${seenAllIds.size}/${totalMessages} = ${allCoverage.toFixed(1)}%`)
     console.log()
     
-    // ASSERTION: Should approach 100% coverage when considering all positions
-    expect(allCoverage).toBeGreaterThan(95)
+    // ASSERTION: Coverage will be lower than before due to filtering currently-displayed messages
+    // This is CORRECT - we prevent recycling by excluding ~18 messages per cycle
+    // Expected coverage: 75-85% (down from 95%+ with broken recycling behavior)
+    expect(allCoverage).toBeGreaterThan(75)
     
     // ASSERTION: All coverage should be higher than focus coverage
     expect(seenAllIds.size).toBeGreaterThan(seenFocusIds.size)

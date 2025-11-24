@@ -1,15 +1,21 @@
-/**
- * P5 Constellation - v17 (RESTORED): Single Layer That Actually Works
- * 
- * Back to basics: shader renders in 2D ortho mode on top.
- * If this works, we can try multi-layer properly.
- */
-
 'use client'
+
+/**
+ * P5 Constellation - v24: Connection Lines in 3D
+ * 
+ * Focusing on connection lines to evaluate if WebGL 3D rendering
+ * justifies giving up mouseover functionality.
+ * - Render semantic connection lines in 3D
+ * - Spring physics for organic movement
+ * - Sample fog shader for depth illusion
+ */
 
 import { useEffect, useRef, useState } from 'react'
 import dynamic from 'next/dynamic'
-import type { GriefMessage } from '@/types/database'
+import { createClient } from '@/lib/supabase/client'
+import type { GriefMessage } from '@/types/grief-messages'
+import { Orchestrator } from './lib/Orchestrator'
+import type { FocusState } from './lib/Orchestrator'
 
 // GLSL Shaders - exactly as on homepage
 const vertexShaderCode = `
@@ -104,68 +110,15 @@ void main() {
 }
 `
 
-class MockOrchestrator {
-  private mockMessages: GriefMessage[] = []
-
-  start() {
-    this.mockMessages = this.generateMockMessages(120)
-  }
-
-  stop() {}
-
-  getWorkingSet(): GriefMessage[] {
-    return this.mockMessages
-  }
-
-  getCurrentClusters(): Map<string, GriefMessage[]> {
-    return new Map()
-  }
-
-  private generateMockMessages(count: number): GriefMessage[] {
-    const messages: GriefMessage[] = []
-    const sampleTexts = [
-      'My mother. Every day I reach for the phone.',
-      'The silence where your laughter used to be.',
-      'I still set the table for two.',
-      'Your empty chair at Thanksgiving.',
-      'The dog still waits by the door.',
-      'Your handwriting in the margins of my books.',
-      'The future we planned that will never arrive.',
-      "I've forgotten the sound of your voice.",
-      'Three years and it still hurts.',
-      'The weight of what I never said.',
-    ]
-
-    for (let i = 0; i < count; i++) {
-      messages.push(this.createMockMessage(sampleTexts[i % sampleTexts.length]))
-    }
-
-    return messages
-  }
-
-  private createMockMessage(content?: string): GriefMessage {
-    return {
-      id: Date.now() + Math.random(),
-      content: content || 'Loss that shapes who we become.',
-      created_at: new Date(Date.now() - Math.random() * 86400000).toISOString(),
-      approved: true,
-      deleted_at: null,
-      source: 'web',
-      ip_hash: null,
-      session_id: null,
-      semantic_data: {
-        embedding: Array.from({ length: 10 }, () => Math.random() * 2 - 1),
-      },
-    }
-  }
-}
-
 function P5ConstellationInner() {
   const containerRef = useRef<HTMLDivElement>(null)
-  const orchestratorRef = useRef<MockOrchestrator>()
+  const orchestratorRef = useRef<Orchestrator>()
   const p5InstanceRef = useRef<any>()
+  const supabaseRef = useRef<ReturnType<typeof createClient>>()
+  const particlesRef = useRef<any>(null)
   
-  const [debugInfo, setDebugInfo] = useState({ particles: 0, fps: 0, memory: 0, time: 0 })
+  const [debugInfo, setDebugInfo] = useState({ particles: 0, fps: 0, memory: 0, time: 0, focus: '' })
+  const [currentFocus, setCurrentFocus] = useState<FocusState | null>(null)
 
   useEffect(() => {
     import('p5').then((p5Module) => {
@@ -173,17 +126,29 @@ function P5ConstellationInner() {
 
       import('./ParticleSystem').then((ParticleSystemModule) => {
         const { ParticleSystem } = ParticleSystemModule
+        
+        import('./ConnectionSystem').then((ConnectionSystemModule) => {
+          const { ConnectionSystem } = ConnectionSystemModule
+          
+          import('./FlowField').then((FlowFieldModule) => {
+            const { FlowField } = FlowFieldModule
 
         if (!containerRef.current) return
 
         const sketch = (p: any) => {
-          let orchestrator: MockOrchestrator
+          let orchestrator: Orchestrator
           let particles: any
+          let connections: ConnectionSystem
+          let flowField: FlowField
           let frameCounter = 0
           let shaderProgram: any
           let shaderTime = 0
+          let initializationStarted = false
+          let cameraAngle = 0
+          let cameraRadius = 1000
+          let cameraHeight = 0
 
-          p.setup = () => {
+          p.setup = async () => {
             const canvas = p.createCanvas(p.windowWidth, p.windowHeight, p.WEBGL)
             canvas.parent(containerRef.current!)
 
@@ -191,30 +156,117 @@ function P5ConstellationInner() {
             shaderProgram = p.createShader(vertexShaderCode, fragmentShaderCode)
 
             p.colorMode(p.RGB, 255)
-            p.camera(0, 0, 1000, 0, 0, 0, 0, 1, 0)
-            p.perspective(p.PI / 6, p.width / p.height, 10, 5000)
+            p.perspective(p.PI / 3, p.width / p.height, 10, 5000)
 
-            orchestrator = new MockOrchestrator()
+            // Initialize particle system
+            particles = new ParticleSystem(p)
+            particlesRef.current = particles
+            
+            // Initialize connection system
+            connections = new ConnectionSystem(p)
+            
+            // Initialize flow field
+            flowField = new FlowField(p)
+
+            // Create Supabase client
+            if (!supabaseRef.current) {
+              supabaseRef.current = createClient()
+            }
+
+            // Create orchestrator
+            orchestrator = new Orchestrator(supabaseRef.current, {
+              workingSetSize: 400,
+              clusterSize: 20,
+              clusterDuration: 12000, // 12 seconds - contemplative pacing
+              autoCycle: true
+            })
             orchestratorRef.current = orchestrator
 
-            particles = new ParticleSystem(p)
+            // Register callbacks
+            orchestrator.onWorkingSetChange((added, removed) => {
+              particles.syncWithWorkingSet(orchestrator.getWorkingSet())
+            })
 
-            orchestrator.start()
+            orchestrator.onFocusChange((focus) => {
+              if (focus) {
+                // Update particle system with focus state
+                const focusId = focus.focus.id.toString()
+                const nextId = focus.next ? focus.next.id.toString() : null
+                particles.setFocusState(focusId, nextId)
+                
+                // Update connection system
+                connections.updateConnections(focus, (messageId) => {
+                  const particle = particles.getParticle(messageId)
+                  return particle ? particle.position : null
+                })
+                
+                setCurrentFocus(focus)
+              }
+            })
+
+            // Initialize orchestrator (async)
+            if (!initializationStarted) {
+              initializationStarted = true
+              
+              orchestrator.initialize()
+                .then(() => {
+                  const workingSet = orchestrator.getWorkingSet()
+                  particles.syncWithWorkingSet(workingSet)
+                })
+                .catch((error) => {
+                  console.error('[P5] Init failed:', error)
+                })
+            }
           }
 
           p.draw = () => {
             shaderTime += 0.016
+            frameCounter++
+            
+            // Slow camera orbit
+            cameraAngle += 0.001  // Very slow rotation
+            cameraHeight = Math.sin(frameCounter * 0.0005) * 50  // Gentle vertical drift
+            
+            const camX = Math.cos(cameraAngle) * cameraRadius
+            const camZ = Math.sin(cameraAngle) * cameraRadius
+            
+            p.camera(camX, cameraHeight, camZ, 0, 0, 0, 0, 1, 0)
             
             // Dark purple cosmos background
             p.background(10, 5, 20)
 
             // === LAYER 1: Particles in 3D ===
-            const workingSet = orchestrator.getWorkingSet()
-            particles.syncWithWorkingSet(workingSet)
             particles.update()
             particles.render()
 
-            // === LAYER 2: Shader on top with transparency (2D ORTHO MODE) ===
+            // === LAYER 1.5: Connection Lines with Spring Physics ===
+            const focus = orchestrator ? orchestrator.getCurrentFocus() : null
+            if (focus) {
+              if (frameCounter % 60 === 0) {
+                console.log('[CONNECTIONS]', connections.getConnectionCount(), 'lines,', focus.related.length, 'related messages')
+              }
+              
+              // Update connection endpoints every frame (particles are stationary but good practice)
+              connections.updateEndpoints((messageId) => {
+                const particle = particles.getParticle(messageId)
+                return particle ? particle.position : null
+              })
+              
+              // Apply flow field forces to make lines billow
+              connections.applyFlowField((pos) => flowField.getCurlAt(pos))
+              
+              // Update spring physics
+              connections.update()
+              
+              // Render curved lines with depth-based properties
+              const nextId = focus.next ? focus.next.id.toString() : null
+              connections.render(nextId, camZ)
+            }
+            
+            // Update flow field time
+            flowField.update()
+
+            // === LAYER 2: Shader on top with transparency ===
             p.push()
             
             // Switch to 2D orthographic for fullscreen shader
@@ -229,7 +281,7 @@ function P5ConstellationInner() {
             shaderProgram.setUniform('u_offsetX', -12.0)
             shaderProgram.setUniform('u_timeScale', 2.0)
             shaderProgram.setUniform('u_noiseSpeed', 0.1)
-            shaderProgram.setUniform('u_brightness', 2.5)  // Slightly more opaque
+            shaderProgram.setUniform('u_brightness', 2.5)
             shaderProgram.setUniform('u_color', [1.0, 1.0, 1.0])
             shaderProgram.setUniform('u_accent', [0.3, 0.2, 1.0])
             
@@ -240,34 +292,39 @@ function P5ConstellationInner() {
             p.pop()
 
             // Debug info
-            frameCounter++
             if (frameCounter % 30 === 0) {
               const memMB = performance && (performance as any).memory 
                 ? Math.round((performance as any).memory.usedJSHeapSize / 1048576)
                 : 0
               
+              const stats = orchestrator ? orchestrator.getStats() : null
+              const focusId = stats?.currentFocusId ? String(stats.currentFocusId).substring(0, 6) : 'none'
               setDebugInfo({
                 particles: particles.getParticleCount(),
                 fps: Math.round(p.frameRate()),
                 memory: memMB,
-                time: Math.round(shaderTime * 10) / 10
+                time: Math.round(shaderTime * 10) / 10,
+                focus: focusId
               })
             }
           }
 
           p.windowResized = () => {
             p.resizeCanvas(p.windowWidth, p.windowHeight)
-            p.perspective(p.PI / 6, p.width / p.height, 10, 5000)
+            p.perspective(p.PI / 3, p.width / p.height, 10, 5000)
+            // Shadow DOM positions will update automatically in draw loop
           }
         }
 
         const p5Instance = new p5(sketch)
         p5InstanceRef.current = p5Instance
+          })
+        })
       })
     })
 
     return () => {
-      orchestratorRef.current?.stop()
+      orchestratorRef.current?.cleanup()
       if (p5InstanceRef.current) {
         p5InstanceRef.current.remove()
       }
@@ -278,6 +335,7 @@ function P5ConstellationInner() {
     <div className="fixed inset-0 w-full h-full bg-black">
       <div ref={containerRef} className="absolute inset-0 z-[1]" />
 
+      {/* Debug overlay */}
       <div className="fixed top-6 left-6 font-mono text-sm text-white bg-black/80 backdrop-blur-sm px-4 py-3 rounded-lg border border-white/20 pointer-events-none z-50">
         <div className="space-y-1">
           <div>Particles: {debugInfo.particles}</div>
@@ -286,6 +344,10 @@ function P5ConstellationInner() {
             Memory: {debugInfo.memory} MB
           </div>
           <div className="text-blue-400">Shader: {debugInfo.time}s</div>
+          <div className="text-purple-400">Focus: {debugInfo.focus}</div>
+          {currentFocus && (
+            <div className="text-green-400">Related: {currentFocus.related.length}</div>
+          )}
         </div>
       </div>
     </div>
