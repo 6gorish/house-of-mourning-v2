@@ -19,7 +19,7 @@ Two Flaneurs is an art collective founded by Lee Knight and VI Gorish, working a
 ## Eric Anderson
 *Visual Artist*
 
-[Bio to be added]
+Eric Anderson is a painter, drawer, and mixed media sculptor making work which concerns conditions of materiality, dimensions between ambiguity and familiarity, and the phenomenology of labor. Born in Chicago, IL in 1985, he carried on to study painting and printmaking at the University of WI - Oshkosh. Anderson is currently working and residing in Denver, CO.
 
 ---
 
