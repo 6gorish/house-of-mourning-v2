@@ -23,7 +23,6 @@ export class ClusterSelector {
   constructor(config: MessagePoolConfig) {
     this.config = config
 
-    console.log('[CLUSTER_SELECTOR] Initialized with cluster size:', config.clusterSize)
   }
 
   /**
@@ -54,9 +53,6 @@ export class ClusterSelector {
     previousFocusId: string | null,
     priorityIds: Set<string>
   ): Array<{ message: GriefMessage; similarity: number }> {
-    console.log(
-      `[CLUSTER_SELECTOR] Selecting related messages for focus ${focus.id} (candidates: ${candidates.length})`
-    )
 
     // Filter out the focus message itself from candidates
     let availableCandidates = candidates.filter((msg) => msg.id !== focus.id)
@@ -72,17 +68,11 @@ export class ClusterSelector {
       if (previousFocus) {
         // Remove from candidates so it doesn't get selected twice
         availableCandidates = availableCandidates.filter((msg) => msg.id !== previousFocusId)
-        console.log(`[CLUSTER_SELECTOR] Reserved slot for previous focus ${previousFocusId}`)
-      } else {
-        console.warn(
-          `[CLUSTER_SELECTOR] Previous focus ${previousFocusId} not found in candidates`
-        )
       }
     }
 
     // If we have no candidates and no previous focus, return empty
     if (availableCandidates.length === 0 && previousFocus === null) {
-      console.log('[CLUSTER_SELECTOR] No candidates available')
       return []
     }
 
@@ -95,10 +85,6 @@ export class ClusterSelector {
     // Separate into priority and non-priority messages
     const priorityMessages = sorted.filter((r) => priorityIds.has(r.message.id))
     const regularMessages = sorted.filter((r) => !priorityIds.has(r.message.id))
-
-    console.log(
-      `[CLUSTER_SELECTOR] Candidates: ${priorityMessages.length} priority, ${regularMessages.length} regular`
-    )
 
     // Fill slots preferring priority messages first
     const selectedMessages: Array<{ message: GriefMessage; similarity: number }> = []
@@ -128,10 +114,6 @@ export class ClusterSelector {
 
     // Add similarity-selected messages
     related.push(...similarMessages)
-
-    console.log(
-      `[CLUSTER_SELECTOR] Selected ${related.length} related messages (${previousFocus ? '1 previous focus + ' : ''}${similarMessages.length} similar)`
-    )
 
     return related
   }
@@ -163,7 +145,6 @@ export class ClusterSelector {
     previousFocusId: string | null,
     priorityIds: Set<string>
   ): GriefMessage | null {
-    console.log(`[CLUSTER_SELECTOR] Selecting next message after focus ${focus.id}`)
 
     // CRITICAL REQUIREMENT: If ANY first-class messages in cluster, one MUST be next
     if (related.length > 0) {
@@ -176,15 +157,10 @@ export class ClusterSelector {
         // MUST select a first-class message - pick first one (highest similarity among priority)
         const next = firstClassInCluster[0].message
 
-        console.log(
-          `[CLUSTER_SELECTOR] Selected FIRST-CLASS next: ${next.id} (similarity: ${firstClassInCluster[0].similarity.toFixed(2)})`
-        )
-
         return next
       }
 
       // No first-class messages in cluster - use similarity-based selection
-      console.log(`[CLUSTER_SELECTOR] No first-class messages in cluster, using similarity`)
 
       // Filter out previous focus to prevent ping-pong between same messages
       const eligibleNext = related.filter((r) => r.message.id !== previousFocusId)
@@ -193,29 +169,20 @@ export class ClusterSelector {
         // Related array is already sorted by similarity (highest first)
         const next = eligibleNext[0].message
 
-        console.log(
-          `[CLUSTER_SELECTOR] Selected next from related: ${next.id} (similarity: ${eligibleNext[0].similarity.toFixed(2)})`
-        )
-
         return next
       }
 
       // If all related are the previous focus (shouldn't happen), fall through to candidates
-      console.warn(
-        `[CLUSTER_SELECTOR] All related messages are previous focus, using fallback`
-      )
     }
 
     // Fallback: Pick first candidate that's not the current focus
     const fallback = candidates.find((msg) => msg.id !== focus.id)
 
     if (fallback) {
-      console.log(`[CLUSTER_SELECTOR] Selected next from fallback candidates: ${fallback.id}`)
       return fallback
     }
 
     // No next message available
-    console.warn('[CLUSTER_SELECTOR] No next message available')
     return null
   }
 
@@ -240,7 +207,6 @@ export class ClusterSelector {
   ): boolean {
     // Must have focus
     if (!focus) {
-      console.error('[CLUSTER_SELECTOR] Cluster validation failed: no focus')
       return false
     }
 
@@ -249,9 +215,6 @@ export class ClusterSelector {
     const uniqueIds = new Set(allIds)
 
     if (uniqueIds.size !== allIds.length) {
-      console.error('[CLUSTER_SELECTOR] Cluster validation failed: duplicate messages')
-      console.error(`[CLUSTER_SELECTOR] All IDs: [${allIds.join(', ')}]`)
-      console.error(`[CLUSTER_SELECTOR] Unique IDs: ${uniqueIds.size}, All IDs: ${allIds.length}`)
       // Find duplicates
       const seen = new Set<string>()
       const duplicates = allIds.filter(id => {
@@ -259,20 +222,15 @@ export class ClusterSelector {
         seen.add(id)
         return false
       })
-      console.error(`[CLUSTER_SELECTOR] Duplicate IDs: [${duplicates.join(', ')}]`)
       return false
     }
 
     // Check that focus is not in related
     const focusInRelated = related.some((r) => r.message.id === focus.id)
     if (focusInRelated) {
-      console.error('[CLUSTER_SELECTOR] Cluster validation failed: focus in related array')
-      console.error(`[CLUSTER_SELECTOR] Focus ID: ${focus.id}`)
-      console.error(`[CLUSTER_SELECTOR] Related IDs: [${related.map(r => r.message.id).join(', ')}]`)
       return false
     }
 
-    console.log('[CLUSTER_SELECTOR] Cluster validation passed')
     return true
   }
 

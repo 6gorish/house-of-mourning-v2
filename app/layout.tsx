@@ -1,8 +1,6 @@
 import type { Metadata } from 'next';
-import Link from 'next/link';
-import { Inter, Playfair_Display, Cormorant_Garamond, EB_Garamond, Cinzel, Bodoni_Moda } from 'next/font/google';
-import DesktopNav from '@/components/DesktopNav';
-import MobileMenu from '@/components/MobileMenu';
+import { Inter, Playfair_Display, Cinzel, Cormorant_Garamond } from 'next/font/google';
+import ClientLayoutWrapper from '@/components/ClientLayoutWrapper';
 import './globals.css';
 
 const inter = Inter({
@@ -19,25 +17,6 @@ const playfair = Playfair_Display({
   display: 'swap',
 });
 
-// Logo font options - uncomment ONE to try different styles:
-
-// Option 1: Cormorant Garamond (elegant, refined, literary)
-// const logoFont = Cormorant_Garamond({
-//   subsets: ['latin'],
-//   variable: '--font-logo',
-//   weight: ['300', '400', '600'],
-//   display: 'swap',
-// });
-
-// Option 2: EB Garamond (classic, timeless, book typography)
-// const logoFont = EB_Garamond({
-//   subsets: ['latin'],
-//   variable: '--font-logo',
-//   weight: ['400', '600'],
-//   display: 'swap',
-// });
-
-// Option 3: Cinzel (architectural, formal, Roman inscriptions)
 const logoFont = Cinzel({
   subsets: ['latin'],
   variable: '--font-logo',
@@ -45,13 +24,13 @@ const logoFont = Cinzel({
   display: 'swap',
 });
 
-// Option 4: Bodoni Moda (high contrast, fashion-forward, luxurious)
-// const logoFont = Bodoni_Moda({
-//   subsets: ['latin'],
-//   variable: '--font-logo',
-//   weight: ['400', '600'],
-//   display: 'swap',
-// });
+const cormorant = Cormorant_Garamond({
+  subsets: ['latin'],
+  variable: '--font-cormorant',
+  weight: ['300', '400', '500'],
+  style: ['normal', 'italic'],
+  display: 'swap',
+});
 
 export const metadata: Metadata = {
   title: 'The House of Mourning',
@@ -66,7 +45,7 @@ export const metadata: Metadata = {
     siteName: 'The House of Mourning',
     images: [
       {
-        url: '/og-image.png', // You'll need to add this image
+        url: '/og-image.png',
         width: 1200,
         height: 630,
         alt: 'The House of Mourning Exhibition',
@@ -79,7 +58,7 @@ export const metadata: Metadata = {
     card: 'summary_large_image',
     title: 'The House of Mourning',
     description: 'Grief witnessed collectively through art, sound, and language. December 19-20, 2025.',
-    images: ['/og-image.png'], // You'll need to add this image
+    images: ['/og-image.png'],
   },
 };
 
@@ -89,83 +68,11 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" className={`${inter.variable} ${playfair.variable} ${logoFont.variable}`}>
+    <html lang="en" className={`${inter.variable} ${playfair.variable} ${logoFont.variable} ${cormorant.variable}`}>
       <body className="font-sans antialiased">
-        {/* Navigation */}
-        <nav className="border-b border-stone-200 bg-stone-50/95 backdrop-blur-sm sticky top-0 z-50 transition-elegant">
-          <div className="max-w-6xl mx-auto px-6 md:px-12 py-4 md:py-6">
-            <div className="flex items-center justify-between min-h-[40px]">
-              {/* Site title */}
-              <Link 
-                href="/" 
-                className="group relative flex items-center self-center"
-              >
-                <span className="text-2xl md:text-3xl font-light tracking-tight text-stone-900 
-                               transition-all duration-300 ease-out
-                               group-hover:text-stone-600
-                               relative inline-block leading-none"
-                      style={{ fontFamily: 'var(--font-logo)', display: 'flex', alignItems: 'center' }}>
-                  The House of Mourning
-                  {/* Elegant underline on hover */}
-                  <span className="absolute bottom-0 left-0 w-0 h-[1px] bg-stone-900 
-                               transition-all duration-500 ease-out
-                               group-hover:w-full"></span>
-                </span>
-              </Link>
-
-              {/* Desktop Navigation */}
-              <DesktopNav />
-              
-              {/* Mobile Menu Button */}
-              <MobileMenu />
-            </div>
-          </div>
-        </nav>
-
-        {children}
-
-        {/* Footer */}
-        <footer className="border-t border-stone-200 bg-stone-50">
-          <div className="max-w-6xl mx-auto px-6 md:px-12 py-16 md:py-24">
-            <div className="grid md:grid-cols-2 gap-12 md:gap-16">
-              {/* Contact */}
-              <div>
-                <h3 className="text-xl md:text-2xl font-serif font-light tracking-tight mb-6">Contact</h3>
-                <div className="space-y-2">
-                  <p className="text-sm md:text-base text-stone-600 leading-relaxed">
-                    Email: <a href="mailto:twoflaneurs.com@gmail.com" className="hover:text-sky-700 transition-smooth">twoflaneurs.com@gmail.com</a>
-                  </p>
-                  <p className="text-sm md:text-base text-stone-500 leading-relaxed mt-4">
-                    For inquiries about the exhibition, accessibility needs, or media requests, please email us.
-                  </p>
-                </div>
-              </div>
-
-              {/* Exhibition Info */}
-              <div>
-                <h3 className="text-xl md:text-2xl font-serif font-light tracking-tight mb-6">Exhibition</h3>
-                <div className="space-y-2">
-                  <p className="text-sm md:text-base text-stone-600 leading-relaxed">December 19-20, 2025</p>
-                  <p className="text-sm md:text-base text-stone-600 leading-relaxed">
-                    Truss House at RiNo Art Park<br />
-                    3400 Arkins Ct<br />
-                    Denver, CO 80216
-                  </p>
-                  <p className="text-xs md:text-sm text-stone-500 mt-6 tracking-wide uppercase">
-                    Supported by RiNo Arts District
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            {/* Copyright */}
-            <div className="mt-16 pt-8 border-t border-stone-200 text-center">
-              <p className="text-xs md:text-sm text-stone-500 tracking-wide uppercase">
-                © 2025 Two Flaneurs. All rights reserved.
-              </p>
-            </div>
-          </div>
-        </footer>
+        <ClientLayoutWrapper>
+          {children}
+        </ClientLayoutWrapper>
       </body>
     </html>
   );
