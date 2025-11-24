@@ -8,6 +8,7 @@ import type { FocusState } from '@/presentations/p5-constellation/lib/Orchestrat
 import type { GriefMessage } from '@/types/grief-messages'
 import { VISUALIZATION_CONFIG } from '@/lib/config/visualization-config'
 import { positionMessages, type ParticleInfo, type ConnectionInfo, type MessageToPlace, type PlacedMessage } from '@/lib/message-positioning'
+import { getDeviceConfig, type DeviceConfig } from '@/lib/device-detection'
 
 const vertexShader = `
 attribute vec3 aPosition;
@@ -223,6 +224,7 @@ function ConnectionsTest() {
   const p5InstanceRef = useRef<any>(null)
   const orchestratorRef = useRef<Orchestrator | null>(null)
   const initialized = useRef(false)
+  const deviceConfigRef = useRef<DeviceConfig | null>(null)
   
   const [hoveredMessage, setHoveredMessage] = useState<{ content: string; x: number; y: number } | null>(null)
   const [clusterMessages, setClusterMessages] = useState<ClusterMessageDisplay[]>([])
@@ -234,12 +236,18 @@ function ConnectionsTest() {
     fps: 0, 
     renderTime: 0,
     particles: 0,
-    connections: 0
+    connections: 0,
+    deviceType: 'detecting' as string
   })
 
   useEffect(() => {
     if (initialized.current) return
     initialized.current = true
+    
+    // Get device-appropriate configuration
+    const deviceConfig = getDeviceConfig()
+    deviceConfigRef.current = deviceConfig
+    console.log(`[DEVICE] Detected: ${deviceConfig.type}, particles: ${deviceConfig.workingSetSize}, fog: ${deviceConfig.enableForegroundFog}`)
     
     import('p5').then((p5Module) => {
       const p5 = p5Module.default
@@ -253,6 +261,11 @@ function ConnectionsTest() {
         let cosmicShader: any
         let foregroundShader: any
         let shaderTime = 0
+        
+        // Use device config for particle sizing
+        const minParticleSize = deviceConfig.minParticleSize
+        const maxParticleSize = deviceConfig.maxParticleSize
+        const particleSizeRange = maxParticleSize - minParticleSize
         
         const particles = new Map<string, Particle>()
         const connections: Connection[] = []
@@ -303,9 +316,9 @@ function ConnectionsTest() {
           
           const supabase = createClient()
           orchestrator = new Orchestrator(supabase, {
-            workingSetSize: 300,
+            workingSetSize: deviceConfig.workingSetSize,
             clusterSize: 12,
-            clusterDuration: MESSAGE_TIMING.cycleDuration * 1000, // 37 seconds
+            clusterDuration: MESSAGE_TIMING.cycleDuration * 1000,
             autoCycle: true
           })
           orchestratorRef.current = orchestrator
@@ -321,7 +334,7 @@ function ConnectionsTest() {
                   id: msg.id,
                   x: (p.width * 0.01) + Math.random() * (p.width * 0.98),
                   y: (p.height * 0.01) + Math.random() * (p.height * 0.98),
-                  size: 2 + Math.random() * 4,
+                  size: minParticleSize + Math.random() * particleSizeRange,
                   message: msg,
                   alpha: 0,
                   shouldRemove: false
@@ -339,12 +352,12 @@ function ConnectionsTest() {
             
             // Minimal logging
             if (added.length > 0 || removed.length > 0) {
-              console.log(`[WORKING SET] +${added.length} -${removed.length} = ${particles.size} particles (target: 300)`)
+              console.log(`[WORKING SET] +${added.length} -${removed.length} = ${particles.size} particles (target: ${deviceConfig.workingSetSize})`)
             }
             
             // Warn if particle count is unexpectedly low
-            if (particles.size < 200 && particles.size > 0) {
-              console.warn(`[WARNING] Particle count (${particles.size}) is below expected 300`)
+            if (particles.size < deviceConfig.workingSetSize * 0.6 && particles.size > 0) {
+              console.warn(`[WARNING] Particle count (${particles.size}) is below expected ${deviceConfig.workingSetSize}`)
             }
           })
           
@@ -639,38 +652,42 @@ function ConnectionsTest() {
             const focusCol = connectionColors.focus
             let r, g, b, opacity, lineWidth
             
+            // Apply device-specific multipliers
+            const lineWidthMultiplier = deviceConfig.connectionLineWidth / VISUALIZATION_CONFIG.defaultConnectionWidth
+            const opacityMultiplier = deviceConfig.connectionOpacityMultiplier
+            
             if (conn.isOldFocusNext) {
               // Old focus-next line: stays red while visible, then fades
               // Always red color while visible
               r = focusCol.r; g = focusCol.g; b = focusCol.b
-              opacity = VISUALIZATION_CONFIG.focusConnectionOpacity
-              lineWidth = VISUALIZATION_CONFIG.focusConnectionWidth
+              opacity = VISUALIZATION_CONFIG.focusConnectionOpacity * opacityMultiplier
+              lineWidth = deviceConfig.focusConnectionLineWidth
             } else if (isFocusNext) {
               // Current focus-next: purple initially, turns red when next message appears
               if (clusterAge < MESSAGE_TIMING.focusNextTurnsRed) {
                 // Purple
                 r = defaultCol.r; g = defaultCol.g; b = defaultCol.b
-                opacity = VISUALIZATION_CONFIG.defaultConnectionOpacity
-                lineWidth = VISUALIZATION_CONFIG.defaultConnectionWidth
+                opacity = VISUALIZATION_CONFIG.defaultConnectionOpacity * opacityMultiplier
+                lineWidth = deviceConfig.connectionLineWidth
               } else if (clusterAge < MESSAGE_TIMING.focusNextTurnsRed + MESSAGE_TIMING.fadeInDuration) {
                 // Interpolate purple → red over fadeInDuration
                 const progress = (clusterAge - MESSAGE_TIMING.focusNextTurnsRed) / MESSAGE_TIMING.fadeInDuration
                 r = defaultCol.r + (focusCol.r - defaultCol.r) * progress
                 g = defaultCol.g + (focusCol.g - defaultCol.g) * progress
                 b = defaultCol.b + (focusCol.b - defaultCol.b) * progress
-                opacity = VISUALIZATION_CONFIG.defaultConnectionOpacity + (VISUALIZATION_CONFIG.focusConnectionOpacity - VISUALIZATION_CONFIG.defaultConnectionOpacity) * progress
-                lineWidth = VISUALIZATION_CONFIG.defaultConnectionWidth + (VISUALIZATION_CONFIG.focusConnectionWidth - VISUALIZATION_CONFIG.defaultConnectionWidth) * progress
+                opacity = (VISUALIZATION_CONFIG.defaultConnectionOpacity + (VISUALIZATION_CONFIG.focusConnectionOpacity - VISUALIZATION_CONFIG.defaultConnectionOpacity) * progress) * opacityMultiplier
+                lineWidth = deviceConfig.connectionLineWidth + (deviceConfig.focusConnectionLineWidth - deviceConfig.connectionLineWidth) * progress
               } else {
                 // Red
                 r = focusCol.r; g = focusCol.g; b = focusCol.b
-                opacity = VISUALIZATION_CONFIG.focusConnectionOpacity
-                lineWidth = VISUALIZATION_CONFIG.focusConnectionWidth
+                opacity = VISUALIZATION_CONFIG.focusConnectionOpacity * opacityMultiplier
+                lineWidth = deviceConfig.focusConnectionLineWidth
               }
             } else {
               // Normal connection: always purple
               r = defaultCol.r; g = defaultCol.g; b = defaultCol.b
-              opacity = VISUALIZATION_CONFIG.defaultConnectionOpacity
-              lineWidth = VISUALIZATION_CONFIG.defaultConnectionWidth
+              opacity = VISUALIZATION_CONFIG.defaultConnectionOpacity * opacityMultiplier
+              lineWidth = deviceConfig.connectionLineWidth
             }
             
             ctx.strokeStyle = `rgba(${r}, ${g}, ${b}, ${opacity * conn.opacity * Math.min(from.alpha, to.alpha)})`
@@ -884,7 +901,8 @@ function ConnectionsTest() {
           }
           
           // Layer 4: Foreground shader (atmospheric fog over particles)
-          if (fgConfig.enabled) {
+          // Disabled on mobile for performance
+          if (fgConfig.enabled && deviceConfig.enableForegroundFog) {
             foregroundLayer.clear()
             foregroundLayer.shader(foregroundShader)
             
@@ -912,7 +930,8 @@ function ConnectionsTest() {
               fps: Math.round(p.frameRate()),
               renderTime: Math.round((drawEnd - drawStart) * 100) / 100,
               particles: particles.size,
-              connections: connections.length
+              connections: connections.length,
+              deviceType: deviceConfig.type
             })
           }
         }
@@ -986,11 +1005,12 @@ function ConnectionsTest() {
       <div className="fixed top-6 right-6 font-mono text-sm text-white bg-black/80 backdrop-blur-sm px-4 py-3 rounded-lg border border-white/20 pointer-events-none z-50">
         <div className="space-y-1">
           <div className="text-lg font-bold text-purple-400">CONNECTIONS</div>
+          <div className="text-xs text-gray-400 uppercase">{debugInfo.deviceType}</div>
           <div className="mt-2 pt-2 border-t border-white/20">
             <div>Particles: {debugInfo.particles}</div>
             <div>Connections: {debugInfo.connections}</div>
             <div className="mt-2 pt-2 border-t border-white/10">
-              <div>FPS: <span className={debugInfo.fps >= 55 ? 'text-green-400' : 'text-yellow-400'}>{debugInfo.fps}</span></div>
+              <div>FPS: <span className={debugInfo.fps >= (debugInfo.deviceType === 'mobile' ? 25 : 55) ? 'text-green-400' : 'text-yellow-400'}>{debugInfo.fps}</span></div>
               <div>Render: <span className={debugInfo.renderTime < 16 ? 'text-green-400' : 'text-yellow-400'}>{debugInfo.renderTime}ms</span></div>
             </div>
           </div>
