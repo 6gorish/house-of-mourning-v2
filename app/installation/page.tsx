@@ -239,6 +239,13 @@ function ConnectionsTest() {
     connections: 0,
     deviceType: 'detecting' as string
   })
+  
+  // Check for ?debug=true URL parameter
+  const [showDebug, setShowDebug] = useState(false)
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    setShowDebug(params.get('debug') === 'true')
+  }, [])
 
   useEffect(() => {
     if (initialized.current) return
@@ -1045,7 +1052,9 @@ function ConnectionsTest() {
         </div>
       </nav>
       
-      <div className="fixed top-16 md:top-20 right-4 md:right-6 font-mono text-xs md:text-sm text-white bg-black/80 backdrop-blur-sm px-3 py-2 md:px-4 md:py-3 rounded-lg border border-white/20 pointer-events-none z-50">
+      {/* Debug panel - only shown with ?debug=true */}
+      {showDebug && (
+        <div className="fixed top-16 md:top-20 right-4 md:right-6 font-mono text-xs md:text-sm text-white bg-black/80 backdrop-blur-sm px-3 py-2 md:px-4 md:py-3 rounded-lg border border-white/20 pointer-events-none z-50">
         <div className="space-y-1">
           <div className="text-lg font-bold text-purple-400">CONNECTIONS</div>
           <div className="text-xs text-gray-400 uppercase">{debugInfo.deviceType}</div>
@@ -1059,6 +1068,7 @@ function ConnectionsTest() {
           </div>
         </div>
       </div>
+      )}
 
       {hoveredMessage && (() => {
         // Smart positioning: avoid going off-screen on right edge

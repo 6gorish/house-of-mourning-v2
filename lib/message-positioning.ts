@@ -68,12 +68,20 @@ const CONFIG = {
   minWidth: 180,
   textPadding: 8,
   
-  // Screen edge padding - generous!
+  // Screen edge padding - base values, adjusted for mobile
   screenPadding: {
     top: 50,
     left: 40,
     right: 40,
     bottom: 120,  // Extra large for taskbars/docks
+  },
+  
+  // Mobile-specific padding (more generous)
+  mobileScreenPadding: {
+    top: 70,      // Account for nav bar
+    left: 20,     // Tighter sides on mobile
+    right: 20,
+    bottom: 100,  // Bottom nav/gestures
   },
   
   // Collision resolution
@@ -83,16 +91,33 @@ const CONFIG = {
 }
 
 /**
+ * Get screen padding based on screen size
+ */
+function getScreenPadding(screenWidth: number): typeof CONFIG.screenPadding {
+  // Mobile: width < 768
+  if (screenWidth < 768) {
+    return CONFIG.mobileScreenPadding
+  }
+  return CONFIG.screenPadding
+}
+
+/**
  * Estimate message dimensions - Focus and Next are IDENTICAL sizes
  * Updated for tighter lineHeight (1.15)
+ * Mobile gets smaller max width to avoid overflow
  */
-function estimateMessageDimensions(content: string, isFocusOrNext: boolean): { width: number; height: number } {
+function estimateMessageDimensions(content: string, isFocusOrNext: boolean, screenWidth?: number): { width: number; height: number } {
   // Focus and Next use same sizing
   const charWidth = isFocusOrNext ? 13 : 11
   const lineHeight = isFocusOrNext ? 32 : 25  // Based on lineHeight: 1.15
   
+  // Mobile gets smaller max width
+  const isMobile = screenWidth !== undefined && screenWidth < 768
+  const maxWidth = isMobile ? 280 : CONFIG.maxWidth
+  const minWidth = isMobile ? 140 : CONFIG.minWidth
+  
   const rawWidth = content.length * charWidth * 0.52
-  const width = Math.min(CONFIG.maxWidth, Math.max(CONFIG.minWidth, rawWidth))
+  const width = Math.min(maxWidth, Math.max(minWidth, rawWidth))
   const charsPerLine = width / (charWidth * 0.52)
   const numLines = Math.ceil(content.length / charsPerLine)
   const height = numLines * lineHeight + CONFIG.textPadding * 2
@@ -168,7 +193,7 @@ function chooseQuadrant(
   }
   
   const gap = CONFIG.particleGap
-  const { screenPadding } = CONFIG
+  const screenPadding = getScreenPadding(screenWidth)
   
   // HEAVILY penalize off-screen placements
   if (particle.x - gap - messageDims.width < screenPadding.left) {
@@ -214,7 +239,7 @@ function calculatePositionInQuadrant(
   screenHeight: number
 ): { messageX: number; messageY: number; anchorX: number; anchorY: number } {
   const gap = CONFIG.particleGap
-  const { screenPadding } = CONFIG
+  const screenPadding = getScreenPadding(screenWidth)
   
   let messageX: number, messageY: number, anchorX: number, anchorY: number
   
@@ -368,7 +393,7 @@ export function positionMessages(
     
     // Focus and Next use same dimensions
     const isFocusOrNext = msg.isFocus || msg.isNext
-    const dims = estimateMessageDimensions(msg.content, isFocusOrNext)
+    const dims = estimateMessageDimensions(msg.content, isFocusOrNext, screenWidth)
     const connectionDir = calculateConnectionDirection(msg.id, particles, connections)
     const preferredQuadrant = chooseQuadrant(particle, connectionDir, screenWidth, screenHeight, dims)
     
@@ -452,7 +477,7 @@ export function positionMessages(
     
     // If best placement still has collision, try vertical offsets
     if (bestPlacement && !foundCleanPlacement) {
-      const { screenPadding } = CONFIG
+      const screenPadding = getScreenPadding(screenWidth)
       const baseY = bestPlacement.messageY
       
       for (let offset = CONFIG.stackStep; offset <= CONFIG.maxStackOffset; offset += CONFIG.stackStep) {
@@ -498,7 +523,7 @@ export function positionMessages(
     
     // NUCLEAR OPTION: If still colliding, do a grid search for ANY clear position
     if (bestPlacement && !foundCleanPlacement) {
-      const { screenPadding } = CONFIG
+      const screenPadding = getScreenPadding(screenWidth)
       const gridStep = 60  // Search in 60px increments
       let bestFallbackDist = Infinity
       let fallbackPos: { x: number; y: number } | null = null
