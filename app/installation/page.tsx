@@ -220,8 +220,8 @@ const MESSAGE_TIMING = {
 
 function ConnectionsTest() {
   const containerRef = useRef<HTMLDivElement>(null)
-  const p5InstanceRef = useRef<any>()
-  const orchestratorRef = useRef<Orchestrator>()
+  const p5InstanceRef = useRef<any>(null)
+  const orchestratorRef = useRef<Orchestrator | null>(null)
   const initialized = useRef(false)
   
   const [hoveredMessage, setHoveredMessage] = useState<{ content: string; x: number; y: number } | null>(null)
