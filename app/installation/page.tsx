@@ -307,9 +307,11 @@ function ConnectionsTest() {
           backgroundLayer = p.createGraphics(p.width, p.height, p.WEBGL)
           cosmicShader = backgroundLayer.createShader(vertexShader, cosmicFragmentShader)
           
-          // Foreground shader layer (with alpha for transparency)
-          foregroundLayer = p.createGraphics(p.width, p.height, p.WEBGL)
-          foregroundShader = foregroundLayer.createShader(vertexShader, foregroundFragmentShader)
+          // Foreground shader layer - only create on non-mobile devices
+          if (deviceConfig.enableForegroundFog) {
+            foregroundLayer = p.createGraphics(p.width, p.height, p.WEBGL)
+            foregroundShader = foregroundLayer.createShader(vertexShader, foregroundFragmentShader)
+          }
           
           // Particle layer (2D canvas for particles and connections)
           particleLayer = p.createGraphics(p.width, p.height)
@@ -975,12 +977,15 @@ function ConnectionsTest() {
             particle.y = (particle.y / oldHeight) * p.height
           })
           
-          // Recreate all graphics layers at new size
+          // Recreate graphics layers at new size
           backgroundLayer = p.createGraphics(p.width, p.height, p.WEBGL)
           cosmicShader = backgroundLayer.createShader(vertexShader, cosmicFragmentShader)
           
-          foregroundLayer = p.createGraphics(p.width, p.height, p.WEBGL)
-          foregroundShader = foregroundLayer.createShader(vertexShader, foregroundFragmentShader)
+          // Only recreate foreground if it was enabled
+          if (deviceConfig.enableForegroundFog) {
+            foregroundLayer = p.createGraphics(p.width, p.height, p.WEBGL)
+            foregroundShader = foregroundLayer.createShader(vertexShader, foregroundFragmentShader)
+          }
           
           particleLayer = p.createGraphics(p.width, p.height)
         }
