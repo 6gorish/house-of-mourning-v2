@@ -469,7 +469,8 @@ function ConnectionsTest() {
 
         p.draw = () => {
           const drawStart = performance.now()
-          shaderTime += 0.016
+          // Apply device-specific shader speed multiplier
+          shaderTime += 0.016 * deviceConfig.shaderSpeedMultiplier
           const { backgroundColor: bg } = VISUALIZATION_CONFIG
           p.background(bg.r, bg.g, bg.b)
           
@@ -1007,7 +1008,39 @@ function ConnectionsTest() {
     <div className="fixed inset-0 w-full h-full bg-black">
       <div ref={containerRef} className="absolute inset-0" />
       
-      <div className="fixed top-6 right-6 font-mono text-sm text-white bg-black/80 backdrop-blur-sm px-4 py-3 rounded-lg border border-white/20 pointer-events-none z-50">
+      {/* Minimal floating navigation */}
+      <nav className="fixed top-0 left-0 right-0 z-50 px-4 py-3 md:px-6 md:py-4">
+        <div className="flex items-center justify-between max-w-7xl mx-auto">
+          <a 
+            href="/" 
+            className="text-white/80 hover:text-white transition-colors text-sm md:text-base font-light tracking-wide"
+            style={{ 
+              fontFamily: 'var(--font-logo)',
+              textShadow: '0 2px 10px rgba(0,0,0,0.8)' 
+            }}
+          >
+            The House of Mourning
+          </a>
+          <div className="flex items-center gap-4 md:gap-6">
+            <a 
+              href="/about" 
+              className="text-white/60 hover:text-white transition-colors text-xs md:text-sm"
+              style={{ textShadow: '0 2px 8px rgba(0,0,0,0.8)' }}
+            >
+              About
+            </a>
+            <a 
+              href="/participate" 
+              className="text-white/90 hover:text-white transition-colors text-xs md:text-sm px-3 py-1.5 md:px-4 md:py-2 rounded border border-white/30 hover:border-white/50 hover:bg-white/10"
+              style={{ textShadow: '0 2px 8px rgba(0,0,0,0.8)' }}
+            >
+              Share Your Grief
+            </a>
+          </div>
+        </div>
+      </nav>
+      
+      <div className="fixed top-16 md:top-20 right-4 md:right-6 font-mono text-xs md:text-sm text-white bg-black/80 backdrop-blur-sm px-3 py-2 md:px-4 md:py-3 rounded-lg border border-white/20 pointer-events-none z-50">
         <div className="space-y-1">
           <div className="text-lg font-bold text-purple-400">CONNECTIONS</div>
           <div className="text-xs text-gray-400 uppercase">{debugInfo.deviceType}</div>
