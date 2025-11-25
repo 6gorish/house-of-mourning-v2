@@ -1,3 +1,10 @@
+/**
+ * Installation Shader Background
+ * 
+ * FIXED: Bright areas = opaque, dark areas = transparent
+ * OPTIMIZED: Reduced octaves, faster animation
+ */
+
 'use client'
 
 import { useEffect, useRef } from 'react'
@@ -17,7 +24,6 @@ uniform float u_time;
 uniform vec2 u_resolution;
 varying vec2 vUv;
 
-// ISF shader parameters converted to uniforms
 uniform float scale;
 uniform float offsetX;
 uniform float timeScale;
@@ -26,7 +32,7 @@ uniform float brightness;
 uniform vec3 color;
 uniform vec3 accent;
 
-#define NUM_OCTAVES 6
+#define NUM_OCTAVES 4  // Reduced from 6 for better performance
 
 mat3 rotX(float a) {
     float c = cos(a);
@@ -98,9 +104,10 @@ void main(void) {
 
     vec3 finalColor = (f * f * f * 1.0 + 0.9 * f) * baseCol;
 
-    vec2 uv = gl_FragCoord.xy / u_resolution.xy;
-    // Reduced vignette for better visibility across all screen sizes
-    float alpha = clamp(2.0 - length(uv - vec2(0.5)), 0.0, 1.0);
+    // FIXED: Bright areas = opaque, dark areas = transparent
+    // f ranges 0-1: high f = bright color
+    float alpha = f * 0.8;  // Bright (high f) = opaque (high alpha)
+    alpha = clamp(alpha, 0.1, 0.9);
 
     // tone mapping
     vec3 mapped = (finalColor * brightness) / (1.0 + finalColor * brightness);
@@ -109,7 +116,7 @@ void main(void) {
 }
 `
 
-export function ShaderBackground() {
+export function InstallationShaderBackground() {
   const containerRef = useRef<HTMLDivElement>(null)
   const rendererRef = useRef<THREE.WebGLRenderer | null>(null)
   const sceneRef = useRef<THREE.Scene | null>(null)
@@ -118,35 +125,32 @@ export function ShaderBackground() {
   useEffect(() => {
     if (!containerRef.current) return
 
-    // Scene setup
     const scene = new THREE.Scene()
     sceneRef.current = scene
 
     const camera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1)
 
     const renderer = new THREE.WebGLRenderer({
-      antialias: true,
-      alpha: true // Enable transparency for vignette effect
+      antialias: false, // Disable for better performance
+      alpha: true
     })
     rendererRef.current = renderer
 
     renderer.setSize(window.innerWidth, window.innerHeight)
-    // Reduce pixel ratio on mobile for better performance
     const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent)
-    renderer.setPixelRatio(isMobile ? 1 : Math.min(window.devicePixelRatio, 2))
+    renderer.setPixelRatio(isMobile ? 1 : 1) // Force 1x pixel ratio for performance
+
     containerRef.current.appendChild(renderer.domElement)
 
-    // Shader material with ISF parameters
     const material = new THREE.ShaderMaterial({
       uniforms: {
         u_time: { value: 0.0 },
         u_resolution: { value: new THREE.Vector2(window.innerWidth, window.innerHeight) },
-        // ISF shader parameters - matching reference appearance
         scale: { value: 3.0 },
-        offsetX: { value: -12.0 },  // Will be adjusted based on aspect ratio
-        timeScale: { value: 1.0 },
-        noiseSpeed: { value: 0.05 },
-        brightness: { value: 4.0 },  // Increased for better visibility
+        offsetX: { value: -12.0 },
+        timeScale: { value: 2.0 }, // Increased from 1.0 for faster animation
+        noiseSpeed: { value: 0.1 }, // Increased from 0.05 for more visible motion
+        brightness: { value: 3.0 },
         color: { value: new THREE.Vector3(1.0, 1.0, 1.0) },
         accent: { value: new THREE.Vector3(0.3, 0.2, 1.0) }
       },
@@ -155,60 +159,37 @@ export function ShaderBackground() {
       transparent: true,
     })
     materialRef.current = material
-    
-    // Adjust offset based on aspect ratio to keep shader centered
-    const updateShaderOffset = () => {
-      const aspectRatio = window.innerWidth / window.innerHeight
-      // On laptop screens (~1.6), use less offset. On wider screens (~2.0+), use more.
-      // Formula: interpolate between -8 (narrower) and -14 (wider)
-      const minOffset = -8.0
-      const maxOffset = -14.0
-      const t = Math.min(Math.max((aspectRatio - 1.3) / 1.0, 0), 1) // normalize between 1.3 and 2.3
-      material.uniforms.offsetX.value = minOffset + (maxOffset - minOffset) * t
-    }
-    updateShaderOffset()
 
     const geometry = new THREE.PlaneGeometry(2, 2)
     const mesh = new THREE.Mesh(geometry, material)
     scene.add(mesh)
 
-    // Handle resize with iOS viewport fix
     const handleResize = () => {
       if (!renderer || !material) return
       const width = window.innerWidth
-      // Use visualViewport for iOS, fallback to window.innerHeight
-      // Add extra height buffer for iOS address bar transitions
-      const height = (window.visualViewport?.height || window.innerHeight) + 100
+      const height = window.innerHeight
       renderer.setSize(width, height)
       material.uniforms.u_resolution.value.set(width, height)
-      updateShaderOffset()  // Recalculate offset for new aspect ratio
     }
     
     window.addEventListener('resize', handleResize)
-    
-    // Also listen to visualViewport changes (iOS Safari address bar)
-    if (window.visualViewport) {
-      window.visualViewport.addEventListener('resize', handleResize)
-    }
 
-    // Animation loop
     let animationFrameId: number
+    
     const animate = () => {
       if (!material || !renderer || !scene) return
-      // Separate animation speeds: slower on desktop for contemplative feel, moderate on mobile
+      
       const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent)
-      material.uniforms.u_time.value += isMobile ? 0.0135 : 0.008
+      material.uniforms.u_time.value += isMobile ? 0.027 : 0.016 // Doubled speed
+      
       renderer.render(scene, camera)
       animationFrameId = requestAnimationFrame(animate)
     }
+    
     animate()
 
-    // Cleanup
     return () => {
       window.removeEventListener('resize', handleResize)
-      if (window.visualViewport) {
-        window.visualViewport.removeEventListener('resize', handleResize)
-      }
       cancelAnimationFrame(animationFrameId)
 
       if (renderer) {
@@ -237,11 +218,7 @@ export function ShaderBackground() {
         bottom: 0,
         width: '100%',
         height: '100%',
-        zIndex: -10,
         overflow: 'hidden',
-        // Prevent any gaps during iOS viewport changes
-        transform: 'translateZ(0)',
-        WebkitTransform: 'translateZ(0)',
       }}
     />
   )

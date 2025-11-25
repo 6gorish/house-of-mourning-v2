@@ -49,12 +49,6 @@ export class MessagePoolManager {
   constructor(databaseService: DatabaseService, config: MessagePoolConfig) {
     this.databaseService = databaseService
     this.config = config
-
-    console.log('[POOL_MANAGER] Initialized with config:', {
-      workingSetSize: config.workingSetSize,
-      clusterSize: config.clusterSize,
-      pollingInterval: config.pollingInterval
-    })
   }
 
   /**
@@ -66,14 +60,12 @@ export class MessagePoolManager {
    * @throws {Error} If unable to determine max message ID
    */
   async initialize(): Promise<void> {
-    console.log('[POOL_MANAGER] Initializing...')
 
     try {
       // Get max ID to initialize both cursors
       const maxId = await this.databaseService.getMaxMessageId()
 
       if (maxId === 0) {
-        console.log('[POOL_MANAGER] Database is empty')
         this.historicalCursor = null
         this.newMessageWatermark = 0
         return
@@ -83,17 +75,10 @@ export class MessagePoolManager {
       this.historicalCursor = maxId
       this.newMessageWatermark = maxId
 
-      console.log('[POOL_MANAGER] Cursors initialized:', {
-        historicalCursor: this.historicalCursor,
-        newMessageWatermark: this.newMessageWatermark
-      })
-
       // Start polling for new messages
       this.startPolling()
 
-      console.log('[POOL_MANAGER] Initialization complete')
     } catch (error) {
-      console.error('[POOL_MANAGER] Initialization failed:', error)
       throw new Error(`Failed to initialize pool manager: ${error}`)
     }
   }
@@ -111,7 +96,6 @@ export class MessagePoolManager {
    * const { messages, priorityIds } = await poolManager.getNextBatch(18)
    */
   async getNextBatch(count: number): Promise<BatchResult> {
-    console.log(`[POOL_MANAGER] Getting next batch of ${count} messages`)
 
     const messages: GriefMessage[] = []
     const priorityIds: string[] = []
@@ -121,12 +105,9 @@ export class MessagePoolManager {
       const fromQueue = this.priorityQueue.splice(0, count)
       messages.push(...fromQueue)
       priorityIds.push(...fromQueue.map(m => m.id))
-      
-      console.log(`[POOL_MANAGER] Stage 1: Took ${fromQueue.length} from priority queue`)
     }
 
     if (messages.length >= count) {
-      console.log(`[POOL_MANAGER] Batch complete: ${messages.length} messages (all from queue)`)
       return { messages, priorityIds }
     }
 
@@ -146,16 +127,12 @@ export class MessagePoolManager {
         // Update watermark
         const maxId = Math.max(...newMessages.map(m => parseInt(m.id, 10)))
         this.newMessageWatermark = maxId
-        
-        console.log(`[POOL_MANAGER] Stage 2: Took ${fromNew.length} new messages (watermark: ${this.newMessageWatermark})`)
       }
     } catch (error) {
-      console.error('[POOL_MANAGER] Stage 2 failed:', error)
       // Continue to stage 3
     }
 
     if (messages.length >= count) {
-      console.log(`[POOL_MANAGER] Batch complete: ${messages.length} messages (${priorityIds.length} priority)`)
       return { messages, priorityIds }
     }
 
@@ -163,9 +140,6 @@ export class MessagePoolManager {
     const stillNeeded = count - messages.length
     const historical = await this.fetchHistoricalBatch(stillNeeded)
     messages.push(...historical)
-    
-    console.log(`[POOL_MANAGER] Stage 3: Took ${historical.length} from historical cursor`)
-    console.log(`[POOL_MANAGER] Batch complete: ${messages.length} total (${priorityIds.length} priority, ${historical.length} historical)`)
 
     return { messages, priorityIds }
   }
@@ -179,7 +153,6 @@ export class MessagePoolManager {
    * @param message - Newly submitted message
    */
   async addNewMessage(message: GriefMessage): Promise<void> {
-    console.log(`[POOL_MANAGER] Adding new message ${message.id} to priority queue`)
 
     // Add to end of queue (FIFO)
     this.priorityQueue.push(message)
@@ -188,7 +161,6 @@ export class MessagePoolManager {
     const messageId = parseInt(message.id, 10)
     if (messageId > this.newMessageWatermark) {
       this.newMessageWatermark = messageId
-      console.log(`[POOL_MANAGER] Watermark updated to ${this.newMessageWatermark}`)
     }
 
     // Check for overflow
@@ -196,7 +168,6 @@ export class MessagePoolManager {
     if (this.priorityQueue.length > maxSize) {
       // Drop oldest messages (from front)
       const dropped = this.priorityQueue.splice(0, this.priorityQueue.length - maxSize)
-      console.warn(`[POOL_MANAGER] Queue overflow: dropped ${dropped.length} oldest messages`)
     }
   }
 
@@ -227,7 +198,6 @@ export class MessagePoolManager {
    * Stops polling and releases resources.
    */
   cleanup(): void {
-    console.log('[POOL_MANAGER] Cleaning up...')
 
     if (this.pollingTimer) {
       clearInterval(this.pollingTimer)
@@ -235,8 +205,6 @@ export class MessagePoolManager {
     }
 
     this.priorityQueue = []
-
-    console.log('[POOL_MANAGER] Cleanup complete')
   }
 
   /**
@@ -281,11 +249,9 @@ export class MessagePoolManager {
       const maxId = await this.databaseService.getMaxMessageId()
 
       if (maxId === 0) {
-        console.log('[POOL_MANAGER] Database still empty')
         return []
       }
 
-      console.log(`[POOL_MANAGER] 🔄 RECYCLING: Resetting cursor to ${maxId}`)
       this.historicalCursor = maxId
     }
 
@@ -298,7 +264,6 @@ export class MessagePoolManager {
 
     if (messages.length === 0) {
       // Reached oldest message - recycle
-      console.log('[POOL_MANAGER] 🔄 RECYCLING: Cursor exhausted, recycling...')
       this.historicalCursor = null
       return this.fetchHistoricalBatch(count) // Retry
     }
@@ -316,7 +281,6 @@ export class MessagePoolManager {
    * Begins periodic polling for new messages.
    */
   private startPolling(): void {
-    console.log(`[POOL_MANAGER] Starting polling (interval: ${this.config.pollingInterval}ms)`)
 
     this.pollingTimer = setInterval(() => {
       this.checkForNewMessages()
@@ -336,7 +300,6 @@ export class MessagePoolManager {
       )
 
       if (newMessages.length > 0) {
-        console.log(`[POOL_MANAGER] Found ${newMessages.length} new messages`)
 
         // Add to priority queue
         for (const message of newMessages) {
@@ -344,7 +307,6 @@ export class MessagePoolManager {
         }
       }
     } catch (error) {
-      console.error('[POOL_MANAGER] New message polling failed:', error)
       // Continue polling despite error
     }
   }

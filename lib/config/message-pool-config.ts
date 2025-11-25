@@ -14,14 +14,14 @@ import type { MessagePoolConfig } from '@/types/grief-messages'
  * DO NOT modify these without load testing.
  */
 export const DEFAULT_CONFIG: MessagePoolConfig = {
-  // Working set: Total messages in particle universe
-  workingSetSize: 400,
+  // Working set: Total messages in particle universe (updated for exhibition)
+  workingSetSize: 300,
 
-  // Cluster: Number of related messages shown
-  clusterSize: 20,
+  // Cluster: Number of connections shown (12 related + focus + next = 14 total particles visible)
+  clusterSize: 12,
 
-  // Duration: How long to display each cluster (8 seconds)
-  clusterDuration: 8000,
+  // Duration: How long to display each cluster (20 seconds for contemplative viewing)
+  clusterDuration: 20000,
 
   // Polling: Check for new messages every 5 seconds
   pollingInterval: 5000,
