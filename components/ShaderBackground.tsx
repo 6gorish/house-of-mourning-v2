@@ -99,8 +99,8 @@ void main(void) {
     vec3 finalColor = (f * f * f * 1.0 + 0.9 * f) * baseCol;
 
     vec2 uv = gl_FragCoord.xy / u_resolution.xy;
-    // simple vignette-like alpha
-    float alpha = clamp(1.5 - length(uv - vec2(0.5)), 0.0, 1.0);
+    // Reduced vignette for better visibility across all screen sizes
+    float alpha = clamp(2.0 - length(uv - vec2(0.5)), 0.0, 1.0);
 
     // tone mapping
     vec3 mapped = (finalColor * brightness) / (1.0 + finalColor * brightness);
@@ -143,18 +143,30 @@ export function ShaderBackground() {
         u_resolution: { value: new THREE.Vector2(window.innerWidth, window.innerHeight) },
         // ISF shader parameters - matching reference appearance
         scale: { value: 3.0 },
-        offsetX: { value: -12.0 },
+        offsetX: { value: -12.0 },  // Will be adjusted based on aspect ratio
         timeScale: { value: 1.0 },
         noiseSpeed: { value: 0.05 },
-        brightness: { value: 3.0 }, // MUCH brighter
-        color: { value: new THREE.Vector3(1.0, 1.0, 1.0) }, // White base
-        accent: { value: new THREE.Vector3(0.3, 0.2, 1.0) } // Purple accent
+        brightness: { value: 4.0 },  // Increased for better visibility
+        color: { value: new THREE.Vector3(1.0, 1.0, 1.0) },
+        accent: { value: new THREE.Vector3(0.3, 0.2, 1.0) }
       },
       vertexShader,
       fragmentShader,
-      transparent: true, // Enable transparency
+      transparent: true,
     })
     materialRef.current = material
+    
+    // Adjust offset based on aspect ratio to keep shader centered
+    const updateShaderOffset = () => {
+      const aspectRatio = window.innerWidth / window.innerHeight
+      // On laptop screens (~1.6), use less offset. On wider screens (~2.0+), use more.
+      // Formula: interpolate between -8 (narrower) and -14 (wider)
+      const minOffset = -8.0
+      const maxOffset = -14.0
+      const t = Math.min(Math.max((aspectRatio - 1.3) / 1.0, 0), 1) // normalize between 1.3 and 2.3
+      material.uniforms.offsetX.value = minOffset + (maxOffset - minOffset) * t
+    }
+    updateShaderOffset()
 
     const geometry = new THREE.PlaneGeometry(2, 2)
     const mesh = new THREE.Mesh(geometry, material)
@@ -169,6 +181,7 @@ export function ShaderBackground() {
       const height = (window.visualViewport?.height || window.innerHeight) + 100
       renderer.setSize(width, height)
       material.uniforms.u_resolution.value.set(width, height)
+      updateShaderOffset()  // Recalculate offset for new aspect ratio
     }
     
     window.addEventListener('resize', handleResize)
