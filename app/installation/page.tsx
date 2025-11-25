@@ -546,12 +546,10 @@ function ConnectionsTest() {
           // Combined breathing: ±9% oscillation (increased from ±3.3%)
           const bgBreathing = breath1 + breath2 + breath3
           
-          // Apply to BOTH brightness and alpha
+          // Apply breathing to brightness
           const bgBrightness = shaderConfig.brightness * (1.0 + bgBreathing)
-          const bgAlpha = shaderConfig.alpha * (1.0 + bgBreathing)
           
           cosmicShader.setUniform('u_brightness', bgBrightness)
-          cosmicShader.setUniform('u_alpha', bgAlpha)
           cosmicShader.setUniform('u_tintColor', [shaderConfig.tintColor.r, shaderConfig.tintColor.g, shaderConfig.tintColor.b])
           cosmicShader.setUniform('u_animSpeedX', shaderConfig.animationSpeedX)
           cosmicShader.setUniform('u_animSpeedY', shaderConfig.animationSpeedY)
