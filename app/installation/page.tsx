@@ -9,6 +9,20 @@ import type { GriefMessage } from '@/types/grief-messages'
 import { VISUALIZATION_CONFIG } from '@/lib/config/visualization-config'
 import { positionMessages, type ParticleInfo, type ConnectionInfo, type MessageToPlace, type PlacedMessage } from '@/lib/message-positioning'
 import { getDeviceConfig, type DeviceConfig } from '@/lib/device-detection'
+import { ConnectionLinePhysics } from '@/lib/types/spring-physics'
+import { DEFAULT_SPRING_PHYSICS_CONFIG } from '@/lib/config/spring-physics-config'
+import {
+  initializeConnectionPhysics,
+  updateLineGeometry,
+  calculateControlPointPosition,
+  applyCoupling
+} from '@/lib/physics/spring-physics-utils'
+import { updateControlPointPhysics, applyControlPointSeparation } from '@/lib/physics/spring-physics-update'
+import {
+  sampleFlowFieldForConnection,
+  smoothForces
+} from '@/lib/physics/flow-field-sampling'
+import { debug } from '@/lib/debug-utils'
 
 const vertexShader = `
 attribute vec3 aPosition;
@@ -181,6 +195,7 @@ interface Particle {
   message: GriefMessage
   alpha: number
   shouldRemove: boolean
+  hoverGlow: number  // 0 to 1, animates smoothly for grow/glow on hover
 }
 
 interface Connection {
@@ -188,6 +203,7 @@ interface Connection {
   toId: string
   opacity: number
   isOldFocusNext: boolean
+  physics?: ConnectionLinePhysics
 }
 
 // Re-export PlacedMessage for the component state
@@ -237,7 +253,9 @@ function ConnectionsTest() {
     renderTime: 0,
     particles: 0,
     connections: 0,
-    deviceType: 'detecting' as string
+    deviceType: 'detecting' as string,
+    memoryMB: 0,
+    memoryLimit: 0
   })
   
   // Check for ?debug=true URL parameter
@@ -254,7 +272,7 @@ function ConnectionsTest() {
     // Get device-appropriate configuration
     const deviceConfig = getDeviceConfig()
     deviceConfigRef.current = deviceConfig
-    console.log(`[DEVICE] Detected: ${deviceConfig.type}, particles: ${deviceConfig.workingSetSize}, fog: ${deviceConfig.enableForegroundFog}`)
+    debug.log(`[DEVICE] Detected: ${deviceConfig.type}, particles: ${deviceConfig.workingSetSize}, fog: ${deviceConfig.enableForegroundFog}`)
     
     import('p5').then((p5Module) => {
       const p5 = p5Module.default
@@ -346,7 +364,8 @@ function ConnectionsTest() {
                   size: minParticleSize + Math.random() * particleSizeRange,
                   message: msg,
                   alpha: 0,
-                  shouldRemove: false
+                  shouldRemove: false,
+                  hoverGlow: 0
                 })
               }
             })
@@ -361,12 +380,12 @@ function ConnectionsTest() {
             
             // Minimal logging
             if (added.length > 0 || removed.length > 0) {
-              console.log(`[WORKING SET] +${added.length} -${removed.length} = ${particles.size} particles (target: ${deviceConfig.workingSetSize})`)
+              debug.log(`[WORKING SET] +${added.length} -${removed.length} = ${particles.size} particles (target: ${deviceConfig.workingSetSize})`)
             }
             
             // Warn if particle count is unexpectedly low
             if (particles.size < deviceConfig.workingSetSize * 0.6 && particles.size > 0) {
-              console.warn(`[WARNING] Particle count (${particles.size}) is below expected ${deviceConfig.workingSetSize}`)
+              debug.warn(`[WARNING] Particle count (${particles.size}) is below expected ${deviceConfig.workingSetSize}`)
             }
           })
           
@@ -392,8 +411,28 @@ function ConnectionsTest() {
               outgoingFocusId = null
             }
             
-            // Clear existing connections
-            connections.length = 0
+            // CRITICAL FIX: Preserve old focus-next connection with its physics state
+            // Find the connection that will become the incoming red line
+            const oldFocusNextConnection = focus && previousFocusId && focus.focus.id !== previousFocusId
+              ? connections.find(c => 
+                  (c.fromId === previousFocusId && c.toId === focus.focus.id) ||
+                  (c.fromId === focus.focus.id && c.toId === previousFocusId)
+                )
+              : null
+            
+            // Clear all connections EXCEPT the one that will persist
+            if (oldFocusNextConnection) {
+              // Keep only the old focus-next connection (preserves physics state!)
+              connections.length = 0
+              connections.push(oldFocusNextConnection)
+              // Mark it as old focus-next
+              oldFocusNextConnection.isOldFocusNext = true
+              // Ensure it starts at full opacity
+              oldFocusNextConnection.opacity = 1.0
+            } else {
+              // No connection to preserve, clear everything
+              connections.length = 0
+            }
             
             // Reset cluster timer
             clusterStartTime = Date.now()
@@ -405,18 +444,21 @@ function ConnectionsTest() {
               // Check if this focus was the previous next (for transition continuity)
               const focusWasNext = focus.focus.id === previousNextId
               
+              // Track IDs of the old focus-next connection (for duplicate avoidance)
+              // Note: The connection itself was already preserved above with its physics state
+              const oldFocusNextFromId = oldFocusNextConnection ? oldFocusNextConnection.fromId : null
+              const oldFocusNextToId = oldFocusNextConnection ? oldFocusNextConnection.toId : null
+              
               // Build cluster message list for display
-              // Focus message
               currentClusterIds = [
                 { id: focus.focus.id, content: focus.focus.content, isFocus: true, isNext: false, messageIndex: -1, wasNext: focusWasNext }
               ]
               
-              // Related messages - assign message indices for paired cascade timing
-              // Filter out focus, next, AND outgoing focus to avoid duplicates
+              // Related messages - filter out focus, next, AND outgoing focus
               const relatedFiltered = focus.related.filter(rel => 
                 rel.message.id !== focus.focus.id && 
                 rel.message.id !== focus.next?.id &&
-                rel.message.id !== outgoingFocusId  // CRITICAL: filter out outgoing focus!
+                rel.message.id !== outgoingFocusId
               )
               
               relatedFiltered.forEach((rel, index) => {
@@ -425,7 +467,7 @@ function ConnectionsTest() {
                   content: rel.message.content,
                   isFocus: false,
                   isNext: false,
-                  messageIndex: index,  // 0-10 for the 11 related messages (excluding next)
+                  messageIndex: index,
                   wasNext: false
                 })
               })
@@ -437,31 +479,29 @@ function ConnectionsTest() {
                   content: focus.next.content,
                   isFocus: false,
                   isNext: true,
-                  messageIndex: -2,  // Special index for next
+                  messageIndex: -2,
                   wasNext: false
                 })
               }
               
-              // Collision offsets are now handled by the positioning system
-              
-              // Add old focus-next connection if it exists (will stay red for 2 seconds)
-              if (previousFocusId && currentFocusId && previousFocusId !== currentFocusId) {
-                connections.push({
-                  fromId: previousFocusId,
-                  toId: currentFocusId,
-                  opacity: 1.0,
-                  isOldFocusNext: true
-                })
-              }
-              
-              // Add all new connections (start invisible, will animate in)
+              // Add regular connections EXCEPT if they would duplicate isOldFocusNext
               focus.related.forEach(rel => {
-                connections.push({
-                  fromId: focus.focus.id,
-                  toId: rel.message.id,
-                  opacity: 0,
-                  isOldFocusNext: false
-                })
+                // Check if this connection would duplicate the old focus-next line
+                // (either same direction or reverse direction)
+                const isDuplicateOfOldFocusNext = 
+                  oldFocusNextFromId && oldFocusNextToId && (
+                    (focus.focus.id === oldFocusNextFromId && rel.message.id === oldFocusNextToId) ||
+                    (focus.focus.id === oldFocusNextToId && rel.message.id === oldFocusNextFromId)
+                  )
+                
+                if (!isDuplicateOfOldFocusNext) {
+                  connections.push({
+                    fromId: focus.focus.id,
+                    toId: rel.message.id,
+                    opacity: 0,
+                    isOldFocusNext: false
+                  })
+                }
               })
             } else {
               currentFocusId = null
@@ -495,7 +535,23 @@ function ConnectionsTest() {
           cosmicShader.setUniform('u_resolution', [backgroundLayer.width, backgroundLayer.height])
           
           // Configurable shader uniforms
-          cosmicShader.setUniform('u_brightness', shaderConfig.brightness)
+          // === SHADER BREATHING (LFO Modulation) ===
+          // Multiple overlapping sine waves create organic brightness + alpha oscillation
+          // Prime number periods prevent repetitive patterns
+          const shaderBreathTime = Date.now() / 1000
+          const breath1 = Math.sin(shaderBreathTime * 0.17) * 0.04  // 5.9s period
+          const breath2 = Math.sin(shaderBreathTime * 0.11) * 0.03  // 9.1s period  
+          const breath3 = Math.sin(shaderBreathTime * 0.07) * 0.02  // 14.3s period
+          
+          // Combined breathing: ±9% oscillation (increased from ±3.3%)
+          const bgBreathing = breath1 + breath2 + breath3
+          
+          // Apply to BOTH brightness and alpha
+          const bgBrightness = shaderConfig.brightness * (1.0 + bgBreathing)
+          const bgAlpha = shaderConfig.alpha * (1.0 + bgBreathing)
+          
+          cosmicShader.setUniform('u_brightness', bgBrightness)
+          cosmicShader.setUniform('u_alpha', bgAlpha)
           cosmicShader.setUniform('u_tintColor', [shaderConfig.tintColor.r, shaderConfig.tintColor.g, shaderConfig.tintColor.b])
           cosmicShader.setUniform('u_animSpeedX', shaderConfig.animationSpeedX)
           cosmicShader.setUniform('u_animSpeedY', shaderConfig.animationSpeedY)
@@ -603,18 +659,9 @@ function ConnectionsTest() {
             const isFocusNext = (conn.fromId === currentFocusId && conn.toId === currentNextId)
             
             if (conn.isOldFocusNext) {
-              // Old focus-next line (incoming red line): stays red, then fades
-              if (clusterAge <= MESSAGE_TIMING.incomingRedDuration) {
-                // Stay red
-                conn.opacity = 1.0
-              } else if (clusterAge < incomingRedFadeEnd) {
-                // Fade out over connectionFadeOutDuration
-                const fadeProgress = (clusterAge - MESSAGE_TIMING.incomingRedDuration) / MESSAGE_TIMING.connectionFadeOutDuration
-                conn.opacity = Math.max(0, 1 - fadeProgress)
-              } else {
-                // Fully faded (will be removed)
-                conn.opacity = 0
-              }
+              // Old focus-next line (incoming red line): persists through entire cycle
+              // Stays at full opacity, only color changes (handled in rendering below)
+              conn.opacity = 1.0
             } else if (isFocusNext) {
               // Current focus-next: stays purple, turns red when next appears
               // Opacity always 1.0, color changes handled in draw code
@@ -638,13 +685,101 @@ function ConnectionsTest() {
             }
           })
           
-          // Remove old focus-next connection after it fades out
-          for (let i = connections.length - 1; i >= 0; i--) {
-            if (connections[i].isOldFocusNext && clusterAge >= incomingRedFadeEnd) {
-              connections.splice(i, 1)
+          // Old focus-next connections are cleared at cluster transition (onFocusChange)
+          // No need to remove them here
+
+          // === SPRING PHYSICS UPDATE ===
+          const FIXED_DT = 1 / 60  // Fixed timestep for stability
+          const physicsConfig = {
+            ...DEFAULT_SPRING_PHYSICS_CONFIG,
+            flowField: {
+              ...DEFAULT_SPRING_PHYSICS_CONFIG.flowField,
+              enabled: true  // Enable flow field sampling
             }
           }
+
+          // === GLOBAL COHERENT FORCES ===
+          // Make the system breathe as one organism while preserving individual character
+          // Multiple overlapping waves create complex, organic coordinated motion
           
+          // Time-based global oscillations (slow breathing)
+          const globalTime = Date.now() / 1000
+          const breathe1 = Math.sin(globalTime * 0.3) * 3  // 3-second period
+          const breathe2 = Math.sin(globalTime * 0.19) * 2 // 5-second period (prime number for non-repeating)
+          const breathe3 = Math.sin(globalTime * 0.13) * 1.5 // 7-second period
+          
+          // Spatial wave patterns (creates coordinated movement across space)
+          const wavePhase = globalTime * 0.4
+          
+          connections.forEach(conn => {
+            const fromParticle = particles.get(conn.fromId)
+            const toParticle = particles.get(conn.toId)
+
+            if (!fromParticle || !toParticle) return
+
+            // Initialize physics if not already done
+            if (!conn.physics) {
+              conn.physics = initializeConnectionPhysics(fromParticle, toParticle, physicsConfig)
+            }
+
+            // Update line geometry (in case particles moved, though they shouldn't)
+            updateLineGeometry(conn.physics, fromParticle, toParticle)
+
+            // === SAMPLE FLOW FIELD ===
+            // IMPORTANT: Always sample backgroundLayer (present on both mobile and desktop)
+            // Do NOT sample foregroundLayer (only exists on desktop, used for fog)
+            sampleFlowFieldForConnection(
+              { physics: conn.physics },
+              backgroundLayer,  // ALWAYS use background - consistent across devices
+              particles,
+              physicsConfig,
+              conn.fromId,
+              conn.toId
+            )
+
+            // === SMOOTH FORCES ===
+            smoothForces(conn.physics.controlPoint1, physicsConfig)
+            smoothForces(conn.physics.controlPoint2, physicsConfig)
+
+            // === APPLY GLOBAL COHERENT FORCES ===
+            // Calculate line center for spatial wave sampling
+            const lineCenterX = (fromParticle.x + toParticle.x) / 2
+            const lineCenterY = (fromParticle.y + toParticle.y) / 2
+            
+            // Spatial waves (creates regions that move together)
+            const spatialWave1 = Math.sin(lineCenterX * 0.003 + wavePhase) * 2
+            const spatialWave2 = Math.cos(lineCenterY * 0.004 + wavePhase * 0.7) * 1.5
+            const spatialWave3 = Math.sin((lineCenterX + lineCenterY) * 0.002 + wavePhase * 1.3) * 1
+            
+            // Combine global breathing + spatial waves
+            const globalPerpendicularForce = breathe1 + breathe2 + breathe3 + spatialWave1 + spatialWave2 + spatialWave3
+            const globalParallelForce = (breathe1 * 0.3 + spatialWave2 * 0.5) // Less sliding, more billowing
+            
+            // Apply to both control points (creates system-wide coherence)
+            conn.physics.controlPoint1.perpendicularForce += globalPerpendicularForce
+            conn.physics.controlPoint1.parallelForce += globalParallelForce
+            
+            conn.physics.controlPoint2.perpendicularForce += globalPerpendicularForce * 0.9 // Slightly different for organic variation
+            conn.physics.controlPoint2.parallelForce += globalParallelForce * 0.9
+
+            // === APPLY SEPARATION CONSTRAINT ===
+            // Prevent control points from bunching up (creates sharp angles)
+            applyControlPointSeparation(conn.physics, physicsConfig)
+
+            // Update physics for both control points
+            updateControlPointPhysics(conn.physics.controlPoint1, conn.physics, physicsConfig, FIXED_DT)
+            updateControlPointPhysics(conn.physics.controlPoint2, conn.physics, physicsConfig, FIXED_DT)
+
+            // Apply coupling if enabled
+            if (physicsConfig.coupling.enabled) {
+              applyCoupling(conn.physics, physicsConfig)
+            }
+
+            // Calculate final rendering positions
+            calculateControlPointPosition(conn.physics.controlPoint1, fromParticle, conn.physics)
+            calculateControlPointPosition(conn.physics.controlPoint2, fromParticle, conn.physics)
+          })
+
           // Draw connections
           connections.forEach(conn => {
             if (conn.opacity <= 0.01) return
@@ -655,6 +790,18 @@ function ConnectionsTest() {
             if (!from || !to || from.alpha <= 0.01 || to.alpha <= 0.01) return
             
             const isFocusNext = (conn.fromId === currentFocusId && conn.toId === currentNextId)
+            
+            // === MESSAGE VISIBILITY HIGHLIGHTING ===
+            // Highlight lines when their NON-FOCUS endpoint message appears
+            // (Focus is always visible, so we only check the OTHER endpoint)
+            const nonFocusId = conn.fromId === currentFocusId ? conn.toId : conn.fromId
+            const messageOpacity = visibleMessageOpacities.get(nonFocusId) || 0
+            
+            // DRAMATIC boosts when the related message appears:
+            // Brightness: 1.0 (no message) to 3.0 (full message) = 3x brighter
+            const brightnessBoost = 1.0 + (messageOpacity * 2.0)
+            // Width: 1.0 (no message) to 2.5 (full message) = 2.5x thicker
+            const widthBoost = 1.0 + (messageOpacity * 1.5)
             
             // Determine color and style using config values
             const { connectionColors } = VISUALIZATION_CONFIG
@@ -667,55 +814,100 @@ function ConnectionsTest() {
             const opacityMultiplier = deviceConfig.connectionOpacityMultiplier
             
             if (conn.isOldFocusNext) {
-              // Old focus-next line: stays red while visible, then fades
-              // Always red color while visible
-              r = focusCol.r; g = focusCol.g; b = focusCol.b
-              opacity = VISUALIZATION_CONFIG.focusConnectionOpacity * opacityMultiplier
-              lineWidth = deviceConfig.focusConnectionLineWidth
+              // Old focus-next line: red initially, fades to purple when message disappears
+              // Check if outgoing focus message is still visible
+              const outgoingStillVisible = outgoingFocusId && clusterAge < MESSAGE_TIMING.outgoingFocusFadeStart
+              
+              if (outgoingStillVisible) {
+                // Red while message visible
+                r = focusCol.r; g = focusCol.g; b = focusCol.b
+              } else if (clusterAge < MESSAGE_TIMING.outgoingFocusFadeStart + MESSAGE_TIMING.fadeOutDuration) {
+                // Fade red → purple over fadeOutDuration
+                const fadeProgress = (clusterAge - MESSAGE_TIMING.outgoingFocusFadeStart) / MESSAGE_TIMING.fadeOutDuration
+                r = focusCol.r + (defaultCol.r - focusCol.r) * fadeProgress
+                g = focusCol.g + (defaultCol.g - focusCol.g) * fadeProgress
+                b = focusCol.b + (defaultCol.b - focusCol.b) * fadeProgress
+              } else {
+                // Purple after message fades
+                r = defaultCol.r; g = defaultCol.g; b = defaultCol.b
+              }
+              
+              // Match regular connection styling (not focus styling)
+              opacity = VISUALIZATION_CONFIG.defaultConnectionOpacity * opacityMultiplier
+              lineWidth = deviceConfig.connectionLineWidth
             } else if (isFocusNext) {
               // Current focus-next: purple initially, turns red when next message appears
+              // Line width and opacity stay constant - only color changes
+              opacity = VISUALIZATION_CONFIG.defaultConnectionOpacity * opacityMultiplier
+              lineWidth = deviceConfig.connectionLineWidth
+              
               if (clusterAge < MESSAGE_TIMING.focusNextTurnsRed) {
                 // Purple
                 r = defaultCol.r; g = defaultCol.g; b = defaultCol.b
-                opacity = VISUALIZATION_CONFIG.defaultConnectionOpacity * opacityMultiplier
-                lineWidth = deviceConfig.connectionLineWidth
               } else if (clusterAge < MESSAGE_TIMING.focusNextTurnsRed + MESSAGE_TIMING.fadeInDuration) {
-                // Interpolate purple → red over fadeInDuration
+                // Interpolate purple → red over fadeInDuration (color only)
                 const progress = (clusterAge - MESSAGE_TIMING.focusNextTurnsRed) / MESSAGE_TIMING.fadeInDuration
                 r = defaultCol.r + (focusCol.r - defaultCol.r) * progress
                 g = defaultCol.g + (focusCol.g - defaultCol.g) * progress
                 b = defaultCol.b + (focusCol.b - defaultCol.b) * progress
-                opacity = (VISUALIZATION_CONFIG.defaultConnectionOpacity + (VISUALIZATION_CONFIG.focusConnectionOpacity - VISUALIZATION_CONFIG.defaultConnectionOpacity) * progress) * opacityMultiplier
-                lineWidth = deviceConfig.connectionLineWidth + (deviceConfig.focusConnectionLineWidth - deviceConfig.connectionLineWidth) * progress
               } else {
                 // Red
                 r = focusCol.r; g = focusCol.g; b = focusCol.b
-                opacity = VISUALIZATION_CONFIG.focusConnectionOpacity * opacityMultiplier
-                lineWidth = deviceConfig.focusConnectionLineWidth
               }
             } else {
-              // Normal connection: always purple
+              // Normal connection: always purple, constant styling
               r = defaultCol.r; g = defaultCol.g; b = defaultCol.b
               opacity = VISUALIZATION_CONFIG.defaultConnectionOpacity * opacityMultiplier
               lineWidth = deviceConfig.connectionLineWidth
             }
             
-            ctx.strokeStyle = `rgba(${r}, ${g}, ${b}, ${opacity * conn.opacity * Math.min(from.alpha, to.alpha)})`
-            ctx.lineWidth = lineWidth
+            // Apply message visibility boosts
+            const finalOpacity = opacity * conn.opacity * Math.min(from.alpha, to.alpha) * brightnessBoost
+            const finalLineWidth = lineWidth * widthBoost
             
+            ctx.strokeStyle = `rgba(${r}, ${g}, ${b}, ${finalOpacity})`
+            ctx.lineWidth = finalLineWidth
+
             ctx.beginPath()
             ctx.moveTo(from.x, from.y)
-            ctx.lineTo(to.x, to.y)
+
+            // Use physics-driven Bezier curves if physics initialized
+            if (conn.physics) {
+              const cp1 = conn.physics.controlPoint1
+              const cp2 = conn.physics.controlPoint2
+
+              ctx.bezierCurveTo(
+                cp1.x, cp1.y,
+                cp2.x, cp2.y,
+                to.x, to.y
+              )
+            } else {
+              // Fallback to straight line if physics not initialized
+              ctx.lineTo(to.x, to.y)
+            }
+
             ctx.stroke()
           })
           
           // Update and draw particles
           const alphaChangePerFrame = 1.0 / ((VISUALIZATION_CONFIG.animateIn / 1000) * 60) // 60 FPS assumed
           
+          // Pulse timing for hover effect (matches preview page)
+          const hoverPulseTime = Date.now() / 1000
+          const hoverPulse = 1 + Math.sin(hoverPulseTime * 2) * 0.15
+          
           particles.forEach((particle, id) => {
             const isFocus = id === currentFocusId
             const isNext = id === currentNextId
             const isNextTurningRed = isNext && clusterAge >= MESSAGE_TIMING.focusNextTurnsRed
+            const isHovered = id === currentHoveredId
+            
+            // Smooth hover glow transition
+            if (isHovered) {
+              particle.hoverGlow = Math.min(1, particle.hoverGlow + 0.1)
+            } else {
+              particle.hoverGlow = Math.max(0, particle.hoverGlow - 0.05)
+            }
             
             // Check if this particle's message is currently visible
             const messageOpacity = visibleMessageOpacities.get(id) || 0
@@ -740,39 +932,48 @@ function ConnectionsTest() {
             // Highlighted particles (with visible messages) get a brighter, whiter color
             const { particleColors } = VISUALIZATION_CONFIG
             const isSpecial = isFocus || isNextTurningRed
+            const glowAmount = particle.hoverGlow
             
-            // Base colors
+            // Base colors - interpolate toward warm white when hovered
             let center, mid
             if (isSpecial) {
               center = particleColors.focus.center
               mid = particleColors.focus.mid
-            } else if (hasVisibleMessage) {
-              // "Burning brightly" - intensified warm white that scales with message opacity
-              // Blends from default color toward bright warm white
-              const intensity = messageOpacity
+            } else if (hasVisibleMessage || glowAmount > 0.01) {
+              // "Burning brightly" - intensified warm white that scales with message opacity OR hover
+              // Use whichever intensity is higher (message visibility or hover glow)
+              const intensity = Math.max(messageOpacity, glowAmount)
               center = {
                 r: particleColors.default.center.r + (255 - particleColors.default.center.r) * intensity * 0.6,
                 g: particleColors.default.center.g + (250 - particleColors.default.center.g) * intensity * 0.5,
-                b: particleColors.default.center.b + (230 - particleColors.default.center.b) * intensity * 0.3,
+                b: particleColors.default.center.b + (240 - particleColors.default.center.b) * intensity * 0.3,
               }
               mid = {
                 r: particleColors.default.mid.r + (255 - particleColors.default.mid.r) * intensity * 0.5,
                 g: particleColors.default.mid.g + (245 - particleColors.default.mid.g) * intensity * 0.4,
-                b: particleColors.default.mid.b + (220 - particleColors.default.mid.b) * intensity * 0.25,
+                b: particleColors.default.mid.b + (230 - particleColors.default.mid.b) * intensity * 0.25,
               }
             } else {
               center = particleColors.default.center
               mid = particleColors.default.mid
             }
             
+            // Size multipliers: grow when hovered, pulse when hovered
+            const hoverSizeGrow = 1 + glowAmount * 0.3  // Grow up to 30% on hover
+            const hoverSizePulse = 1 + (hoverPulse - 1) * glowAmount  // Pulse only when hovered
+            const finalSizeMult = hoverSizeGrow * hoverSizePulse
+            
             const sizeBrightness = 0.4 + ((particle.size - 2) / 4) * 0.6
-            // Boost brightness when message is visible
+            // Boost brightness when message is visible OR hovered
             const messageBrightness = hasVisibleMessage ? 1 + messageOpacity * 0.3 : 1
-            const totalBrightness = particle.alpha * sizeBrightness * messageBrightness
+            const hoverBrightness = 1 + glowAmount * 0.4  // Brighten up to 40% on hover
+            const totalBrightness = particle.alpha * sizeBrightness * messageBrightness * hoverBrightness
+            
+            const finalSize = particle.size * 2.5 * finalSizeMult
             
             const gradient = ctx.createRadialGradient(
               particle.x, particle.y, 0,
-              particle.x, particle.y, particle.size * 2.5
+              particle.x, particle.y, finalSize
             )
             
             gradient.addColorStop(0, `rgba(${center.r}, ${center.g}, ${center.b}, ${1.0 * totalBrightness})`)
@@ -782,7 +983,7 @@ function ConnectionsTest() {
             
             ctx.fillStyle = gradient
             ctx.beginPath()
-            ctx.arc(particle.x, particle.y, particle.size * 2.5, 0, Math.PI * 2)
+            ctx.arc(particle.x, particle.y, finalSize, 0, Math.PI * 2)
             ctx.fill()
           })
           
@@ -829,35 +1030,56 @@ function ConnectionsTest() {
             })
           })
           
-          // Use the luxury positioning system with PERMANENT position caching
-          // Messages NEVER change position once placed - this eliminates ALL flickering
-          let positionedMessages = positionMessages(
-            messagesToPlace,
-            particleInfoMap,
-            connectionInfos,
-            p.width,
-            p.height
-          )
+          // OPTIMIZATION: Only recalculate positions when message set changes
+          // Create a stable key from visible message IDs
+          const visibleIds = messagesToPlace.map(m => m.id).sort().join(',')
+          const previousVisibleIds = p.frameCount === 1 ? '' : (p as any)._previousVisibleIds || ''
+          const messagesChanged = visibleIds !== previousVisibleIds
+          ;(p as any)._previousVisibleIds = visibleIds
           
-          // Apply permanent position cache - if we've seen this message before, use cached position
-          positionedMessages = positionedMessages.map(msg => {
-            const cached = positionCacheRef.current.get(msg.id)
-            if (cached) {
-              // Use cached position, but update opacity and particle position
-              return {
-                ...cached,
-                opacity: msg.opacity,
-                particleX: msg.particleX,
-                particleY: msg.particleY,
-                isFocus: msg.isFocus,
-                isNext: msg.isNext,
+          let positionedMessages: PlacedMessage[]
+          
+          if (messagesChanged) {
+            // Message set changed - recalculate positions
+            positionedMessages = positionMessages(
+              messagesToPlace,
+              particleInfoMap,
+              connectionInfos,
+              p.width,
+              p.height
+            )
+            
+            // Apply permanent position cache
+            positionedMessages = positionedMessages.map(msg => {
+              const cached = positionCacheRef.current.get(msg.id)
+              if (cached) {
+                return {
+                  ...cached,
+                  opacity: msg.opacity,
+                  particleX: msg.particleX,
+                  particleY: msg.particleY,
+                  isFocus: msg.isFocus,
+                  isNext: msg.isNext,
+                }
+              } else {
+                positionCacheRef.current.set(msg.id, { ...msg })
+                return msg
               }
-            } else {
-              // First time seeing this message - cache its position
-              positionCacheRef.current.set(msg.id, { ...msg })
-              return msg
-            }
-          })
+            })
+            
+            // Store for next frame
+            ;(p as any)._cachedPositions = positionedMessages
+          } else {
+            // Message set unchanged - use cached positions, just update opacities
+            const cached = (p as any)._cachedPositions || []
+            positionedMessages = cached.map((cachedMsg: PlacedMessage) => {
+              const currentMsg = messagesToPlace.find(m => m.id === cachedMsg.id)
+              return currentMsg ? {
+                ...cachedMsg,
+                opacity: currentMsg.opacity,
+              } : cachedMsg
+            })
+          }
           
           // Clean up cache - remove entries for messages no longer in working set
           // (This prevents memory leak but keeps positions stable during cluster lifetime)
@@ -905,8 +1127,8 @@ function ConnectionsTest() {
           // NOTE: outgoing focus is rendered separately via its own React state
           // Do NOT add it to positionedMessages
           
-          // Throttle React state updates to every 3 frames for performance
-          if (p.frameCount % 3 === 0) {
+          // Throttle React state updates to every 5 frames for performance (was 3)
+          if (p.frameCount % 5 === 0) {
             setClusterMessages(positionedMessages)
           }
           
@@ -918,7 +1140,12 @@ function ConnectionsTest() {
             
             foregroundShader.setUniform('u_time', shaderTime)
             foregroundShader.setUniform('u_resolution', [foregroundLayer.width, foregroundLayer.height])
-            foregroundShader.setUniform('u_brightness', fgConfig.brightness)
+            
+            // Apply same breathing to foreground layer for coherent pulsing
+            const fgBrightness = fgConfig.brightness * (1.0 + bgBreathing)
+            const fgAlpha = 1.0 * (1.0 + bgBreathing)  // Foreground alpha (used in shader calculations)
+            
+            foregroundShader.setUniform('u_brightness', fgBrightness)
             foregroundShader.setUniform('u_tintColor', [fgConfig.tintColor.r, fgConfig.tintColor.g, fgConfig.tintColor.b])
             foregroundShader.setUniform('u_animSpeedX', fgConfig.animationSpeedX)
             foregroundShader.setUniform('u_animSpeedY', fgConfig.animationSpeedY)
@@ -936,12 +1163,23 @@ function ConnectionsTest() {
           const drawEnd = performance.now()
           
           if (p.frameCount % 30 === 0) {
+            // Memory monitoring (Chrome only)
+            let memoryMB = 0
+            let memoryLimit = 0
+            if ((performance as any).memory) {
+              const mem = (performance as any).memory
+              memoryMB = Math.round(mem.usedJSHeapSize / 1048576) // Convert to MB
+              memoryLimit = Math.round(mem.jsHeapSizeLimit / 1048576)
+            }
+            
             setDebugInfo({
               fps: Math.round(p.frameRate()),
               renderTime: Math.round((drawEnd - drawStart) * 100) / 100,
               particles: particles.size,
               connections: connections.length,
-              deviceType: deviceConfig.type
+              deviceType: deviceConfig.type,
+              memoryMB,
+              memoryLimit
             })
           }
         }
@@ -1064,6 +1302,12 @@ function ConnectionsTest() {
             <div className="mt-2 pt-2 border-t border-white/10">
               <div>FPS: <span className={debugInfo.fps >= (debugInfo.deviceType === 'mobile' ? 25 : 55) ? 'text-green-400' : 'text-yellow-400'}>{debugInfo.fps}</span></div>
               <div>Render: <span className={debugInfo.renderTime < 16 ? 'text-green-400' : 'text-yellow-400'}>{debugInfo.renderTime}ms</span></div>
+              {debugInfo.memoryLimit > 0 && (
+                <div className="mt-2 pt-2 border-t border-white/10">
+                  <div>Memory: <span className={debugInfo.memoryMB < debugInfo.memoryLimit * 0.8 ? 'text-green-400' : 'text-yellow-400'}>{debugInfo.memoryMB}MB</span> / {debugInfo.memoryLimit}MB</div>
+                  <div className="text-xs text-gray-400">({Math.round(debugInfo.memoryMB / debugInfo.memoryLimit * 100)}%)</div>
+                </div>
+              )}
             </div>
           </div>
         </div>

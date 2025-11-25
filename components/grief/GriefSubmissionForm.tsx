@@ -3,14 +3,20 @@
 /**
  * GriefSubmissionForm
  * Anonymous grief message submission with character counter and validation
+ * On success, stores message in sessionStorage and redirects to preview
  */
 
 import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { getOrCreateSessionId } from '@/lib/session';
 
 const MAX_LENGTH = 280;
 
+// Feature flag: Set to true after Dec 19 to redirect to full installation
+const SHOW_FULL_INSTALLATION = false;
+
 export default function GriefSubmissionForm() {
+  const router = useRouter();
   const [content, setContent] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitStatus, setSubmitStatus] = useState<{
@@ -48,11 +54,15 @@ export default function GriefSubmissionForm() {
       const data = await response.json();
 
       if (response.ok) {
-        setSubmitStatus({
-          type: 'success',
-          message: 'Your message has been shared. Thank you for contributing your voice.',
-        });
-        setContent(''); // Clear form
+        // Store the submitted message for the preview page
+        sessionStorage.setItem('submittedGriefMessage', content.trim());
+        
+        // Redirect to appropriate page
+        if (SHOW_FULL_INSTALLATION) {
+          router.push('/installation');
+        } else {
+          router.push('/installation-preview');
+        }
       } else if (response.status === 429) {
         setSubmitStatus({
           type: 'error',
@@ -131,15 +141,9 @@ export default function GriefSubmissionForm() {
           </button>
         </div>
 
-        {/* Status messages */}
-        {submitStatus.type && (
-          <div
-            className={`p-5 text-center border ${
-              submitStatus.type === 'success'
-                ? 'bg-emerald-50 text-emerald-900 border-emerald-200'
-                : 'bg-red-50 text-red-900 border-red-200'
-            }`}
-          >
+        {/* Status messages - only shown for errors now */}
+        {submitStatus.type === 'error' && (
+          <div className="p-5 text-center border bg-red-50 text-red-900 border-red-200">
             <p className="text-sm md:text-base font-light leading-relaxed">
               {submitStatus.message}
             </p>

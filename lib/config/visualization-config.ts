@@ -165,12 +165,12 @@ export const VISUALIZATION_CONFIG: VisualizationConfig = {
   
   // ===== OPACITY & STROKE =====
   // Default connection line styling
-  defaultConnectionOpacity: 0.15,
-  defaultConnectionWidth: 1,
+  defaultConnectionOpacity: 0.6,  // INCREASED from 0.15 - start visible, boost on message
+  defaultConnectionWidth: 2,      // DOUBLED from 1 - thicker base lines
   
   // Focus-next connection line styling (when red)
-  focusConnectionOpacity: 0.25,
-  focusConnectionWidth: 3,
+  focusConnectionOpacity: 0.8,    // INCREASED from 0.25 - red lines should be very visible
+  focusConnectionWidth: 6,        // DOUBLED from 3 - thicker focus lines
   
   // ===== BACKGROUND =====
   // Deep purple-black background
