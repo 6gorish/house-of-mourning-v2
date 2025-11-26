@@ -53,7 +53,7 @@ Carolina Ebeid is a multimedia poet. She is the author of You Ask Me to Talk Abo
 
 [Instagram: @mybluedress](https://www.instagram.com/mybluedress)  
 [carolinaebeid.com](https://www.carolinaebeid.com)  
-[visiblebinary.com](https://www.www.visiblebinary.com)
+[visiblebinary.com](https://www.visiblebinary.com)
 
 ---
 
