@@ -539,11 +539,11 @@ function ConnectionsTest() {
           // Multiple overlapping sine waves create organic brightness + alpha oscillation
           // Prime number periods prevent repetitive patterns
           const shaderBreathTime = Date.now() / 1000
-          const breath1 = Math.sin(shaderBreathTime * 0.17) * 0.04  // 5.9s period
-          const breath2 = Math.sin(shaderBreathTime * 0.11) * 0.03  // 9.1s period  
-          const breath3 = Math.sin(shaderBreathTime * 0.07) * 0.02  // 14.3s period
+          const breath1 = Math.sin(shaderBreathTime * 0.17) * 0.35  // 5.9s period
+          const breath2 = Math.sin(shaderBreathTime * 0.11) * 0.25  // 9.1s period  
+          const breath3 = Math.sin(shaderBreathTime * 0.07) * 0.15  // 14.3s period
           
-          // Combined breathing: ±9% oscillation (increased from ±3.3%)
+          // Combined breathing: ±75% oscillation (very dramatic)
           const bgBreathing = breath1 + breath2 + breath3
           
           // Apply breathing to brightness
