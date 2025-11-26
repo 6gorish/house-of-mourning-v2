@@ -373,10 +373,25 @@ export function positionMessages(
   particles: Map<string, ParticleInfo>,
   connections: ConnectionInfo[],
   screenWidth: number,
-  screenHeight: number
+  screenHeight: number,
+  existingMessages?: PlacedMessage[]  // NEW: Check collisions against already-visible messages
 ): PlacedMessage[] {
   const placed: PlacedMessage[] = []
   const placedBoxes: BoundingBox[] = []
+  
+  // CRITICAL: Add existing visible messages to collision detection
+  if (existingMessages) {
+    for (const existing of existingMessages) {
+      if (existing.opacity > 0.01) {  // Only check against visible messages
+        placedBoxes.push({
+          left: existing.messageX,
+          top: existing.messageY,
+          right: existing.messageX + existing.width,
+          bottom: existing.messageY + existing.height
+        })
+      }
+    }
+  }
   
   // Sort: focus first, then next, then by opacity (most visible = placed first = priority)
   const sorted = [...messages].sort((a, b) => {
