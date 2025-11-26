@@ -34,6 +34,16 @@ M.G. Clark is an ambient Americana musician influenced by a DIY ethos, neo-class
 
 ---
 
+## Zazil Alaíde Collins
+*Poet*
+**image:** zazil-collins.jpg
+
+Zazil Alaíde Collins is a Mexican writer and musical curator interested in the spatiality of poetics. Her work was selected for the General Anthology of Mexican Poetry: From the Second half of the Twentieth Century to Our Days (Océano, 2014), Descarga Cultura UNAM and the prizes Poesía en Voz Alta17 at Casa del Lago UNAM and Ciudad de La Paz Poetry Award 2011. She holds an M.F.A in Creative Writing from the University of Texas at El Paso, and is currently a Ph.D Candidate at CU Boulder. Her last book is Omen (Valparaíso, 2023). 
+
+[zazilcollins.com](https://zazilcollins.com)
+
+---
+
 ## Carolina Ebeid
 *Poet, Video Artist*
 **image:** carolina-ebeid.jpg
