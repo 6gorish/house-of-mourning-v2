@@ -95,7 +95,7 @@ export class ClusterChannel {
     )
 
     // If same pitch as previous, force timbral change
-    const samePitch = this.state && Math.abs(this.state.tonic - hz) < 1
+    const samePitch = !!(this.state && Math.abs(this.state.tonic - hz) < 1)
 
     // Fade out old cluster
     if (this.state) {
@@ -214,7 +214,7 @@ export class ClusterChannel {
     this.fadeOutTimeouts.add(cleanupTimeout)
   }
 
-  private schedulePivot(nextMessage: { semantic_data?: { embedding: number[] } }): void {
+  private schedulePivot(nextMessage: { semantic_data?: { embedding: number[] } | null }): void {
     if (!this.state) return
 
     // Clear any existing pivot timeout
