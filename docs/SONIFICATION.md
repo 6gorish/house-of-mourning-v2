@@ -195,14 +195,36 @@ Sample layers bypass the cluster compressor because:
 **Purpose**: Establish harmonic foundation from which all other pitch content derives.
 
 **Implementation**:
-- Single sine wave oscillator
-- Markov chain transitions: A1 (55Hz) → E2 (82.5Hz) → D2 (73.4Hz) → F#2 (92.5Hz)
+- Single sine wave oscillator with subtle second harmonic (2x frequency at 30% level)
+- Markov chain transitions between four bass notes
 - State duration: 2-5 minutes (configurable via speed multiplier)
-- Crossfade: 12 seconds (linear ramp)
+- Frequency glide: 50ms (prevents clicks without audible portamento)
+
+**Bass Notes**:
+| Note | Frequency | Scale Degree | Character |
+|------|-----------|--------------|----------|
+| A1 | 55 Hz | I (Tonic) | Home, grounding |
+| D2 | 73.42 Hz | IV | Subdominant, plagal weight |
+| E2 | 82.41 Hz | V | Dominant, expectant |
+| F#2 | 92.50 Hz | VI | Dorian color, bittersweet warmth |
+
+**Markov Transition Matrix**:
+
+| From \ To | A1 | D2 | E2 | F#2 |
+|-----------|-----|-----|-----|-----|
+| **A1** | 15% | 35% | 40% | 10% |
+| **D2** | 45% | — | 40% | 15% |
+| **E2** | 50% | 35% | — | 15% |
+| **F#2** | 60% | 10% | 30% | — |
+
+**Musical Reasoning**: 
+- The tonic (A1) can move anywhere but favors the dominant (E2) and subdominant (D2)
+- D2 and E2 have strong gravity back to tonic (45-50%)
+- F#2 (Dorian sixth) is rare but when it appears, it strongly resolves home (60%)
+- Self-transitions are allowed only from A1 (15%) to occasionally extend the tonic
+- The progression circulates without functional resolution—it breathes, not cadences
 
 **Mixer Default**: 46%
-
-**Musical Reasoning**: The bass provides root motion without creating functional harmony. The progression doesn't "go anywhere"—it circulates, like breathing.
 
 ---
 
@@ -330,14 +352,39 @@ The cluster channel is the most complex, with three sub-components:
 - Dedicated convolver reverb at 85% wet
 - Interval: 5-15 minutes between phrases (adjustable for testing)
 
-**Mixer Default**: 50%
+**Sample Mapping**:
+| Sample | Degree | Role |
+|--------|--------|------|
+| lidell-104 | I | Tonic (phrase anchor) |
+| lidell-106 | II | Upper neighbor |
+| lidell-107 | III | Mediant |
+| lidell-111 | IV | Subdominant |
+| lidell-112 | V | Dominant |
+| lidell-114 | VI | Submediant |
+| lidell-116 | VII | Leading tone |
+| lidell-119 | VIII | Upper tonic |
 
-**Markov Transition Weights** (favoring stepwise motion and tonic resolution):
-```
-From I:   II(3), III(2), IV(2), V(3), VI(1), VII(1), VIII(1)
-From V:   I(4), II(2), III(2), IV(3), VI(2), VII(2), VIII(1)  // Strong resolution to I
-From VII: I(4), III(2), V(2), VI(3), VIII(2)                   // Leading tone resolves up
-```
+**Markov Transition Matrix** (weights, not percentages—higher = more likely):
+
+| From \ To | I | II | III | IV | V | VI | VII | VIII |
+|-----------|---|----|----|----|----|----|----|------|
+| **I** | 1 | 3 | 2 | 2 | 3 | 1 | 1 | 1 |
+| **II** | 3 | 1 | 3 | 2 | 2 | 1 | 1 | 1 |
+| **III** | 2 | 3 | 1 | 3 | 2 | 2 | 1 | 1 |
+| **IV** | 2 | 2 | 3 | 1 | 3 | 2 | 1 | 1 |
+| **V** | 4 | 2 | 2 | 3 | 1 | 2 | 2 | 1 |
+| **VI** | 2 | 2 | 2 | 2 | 3 | 1 | 3 | 1 |
+| **VII** | 4 | 1 | 2 | 1 | 2 | 3 | 1 | 2 |
+| **VIII** | 3 | 1 | 1 | 1 | 2 | 2 | 3 | 1 |
+
+**Musical Reasoning**:
+- Stepwise motion is favored (adjacent degrees have weight 3)
+- Strong resolution tendencies: V→I and VII→I both have weight 4
+- Self-transitions have low weight (1) to encourage movement
+- The matrix creates meandering melodies that tend toward tonic without strong cadential drive
+- Combined with 70% phrase-end tonic probability, phrases feel grounded but not formulaic
+
+**Mixer Default**: 50%
 
 ---
 
