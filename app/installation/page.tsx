@@ -23,6 +23,10 @@ import {
   smoothForces
 } from '@/lib/physics/flow-field-sampling'
 import { debug } from '@/lib/debug-utils'
+import { SonificationService } from '@/lib/audio/sonification-service'
+import type { MessageCluster } from '@/lib/audio/types'
+import SoundControl from '@/components/SoundControl'
+import AudioDebugMixer from '@/components/AudioDebugMixer'
 
 const vertexShader = `
 attribute vec3 aPosition;
@@ -241,7 +245,8 @@ function ConnectionsTest() {
   const orchestratorRef = useRef<Orchestrator | null>(null)
   const initialized = useRef(false)
   const deviceConfigRef = useRef<DeviceConfig | null>(null)
-  
+  const sonificationRef = useRef<SonificationService | null>(null)
+
   const [hoveredMessage, setHoveredMessage] = useState<{ content: string; x: number; y: number } | null>(null)
   const [clusterMessages, setClusterMessages] = useState<ClusterMessageDisplay[]>([])
   // SET of IDs to filter from clusterMessages (can have multiple during overlapping transitions)
@@ -323,6 +328,9 @@ function ConnectionsTest() {
         // messageIndex: -1 for focus, -2 for next, 0-10 for the 11 related messages
         // wasNext: true if this focus was the previous cluster's next (for continuity)
         let currentClusterIds: { id: string; content: string; isFocus: boolean; isNext: boolean; messageIndex: number; wasNext: boolean }[] = []
+        
+        // One-shot trigger for focus fade (triggers FiguraLayer passus)
+        let focusFadeTriggered = false
 
         p.setup = async () => {
           const canvas = p.createCanvas(p.windowWidth, p.windowHeight)
@@ -349,9 +357,16 @@ function ConnectionsTest() {
             autoCycle: true
           })
           orchestratorRef.current = orchestrator
-          
+
+          // Create sonification service (but don't initialize yet - requires user gesture)
+          // SoundControl component will handle initialization on first user click
+          if (!sonificationRef.current) {
+            sonificationRef.current = new SonificationService()
+            debug.log('[AUDIO] Sonification service created (awaiting user gesture)')
+          }
+
           clusterDuration = MESSAGE_TIMING.cycleDuration * 1000
-          
+
           // STEP 1: API DATA
           orchestrator.onWorkingSetChange((added, removed) => {
             // Add new particles (start faded out)
@@ -436,6 +451,7 @@ function ConnectionsTest() {
             
             // Reset cluster timer
             clusterStartTime = Date.now()
+            focusFadeTriggered = false  // Reset focus fade trigger for new cluster
             
             if (focus) {
               currentFocusId = focus.focus.id
@@ -503,6 +519,16 @@ function ConnectionsTest() {
                   })
                 }
               })
+
+              // Notify sonification service of cluster change
+              if (sonificationRef.current) {
+                const cluster: MessageCluster = {
+                  focus: focus.focus,
+                  next: focus.next || null,
+                  related: focus.related
+                }
+                sonificationRef.current.onClusterChange(cluster)
+              }
             } else {
               currentFocusId = null
               currentNextId = null
@@ -523,6 +549,12 @@ function ConnectionsTest() {
           
           // Calculate cluster age in seconds
           const clusterAge = (Date.now() - clusterStartTime) / 1000
+          
+          // Trigger focus fade event for FiguraLayer (one-shot per cluster)
+          if (!focusFadeTriggered && clusterAge >= MESSAGE_TIMING.focusFadesAt) {
+            focusFadeTriggered = true
+            sonificationRef.current?.onFocusFade()
+          }
           
           // Background
           const { backgroundColor, cosmicShader: shaderConfig, darkOverlay, foregroundShader: fgConfig } = VISUALIZATION_CONFIG
@@ -1241,6 +1273,7 @@ function ConnectionsTest() {
 
     return () => {
       orchestratorRef.current?.cleanup()
+      sonificationRef.current?.stop()  // Stop and cleanup audio
       if (p5InstanceRef.current) {
         p5InstanceRef.current.remove()
       }
@@ -1250,7 +1283,13 @@ function ConnectionsTest() {
   return (
     <div className="fixed inset-0 w-full h-full bg-black">
       <div ref={containerRef} className="absolute inset-0" />
-      
+
+      {/* Sound controls */}
+      <SoundControl sonificationService={sonificationRef.current} />
+
+      {/* Audio debug mixer - only shown with ?debug=true */}
+      <AudioDebugMixer sonificationService={sonificationRef.current} visible={showDebug} />
+
       {/* Minimal floating navigation */}
       <nav className="fixed top-0 left-0 right-0 z-50 px-4 py-3 md:px-6 md:py-4">
         <div className="flex items-center justify-between max-w-7xl mx-auto">

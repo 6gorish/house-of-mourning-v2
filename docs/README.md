@@ -124,6 +124,16 @@ The system maintains strict separation between three layers, each with distinct 
 
 ## Documentation Structure
 
+### [Sonification System](./SONIFICATION.md)
+Complete audio architecture documentation.
+
+| Topic | Description |
+|-------|-------------|
+| Philosophical Foundations | Inductive principle, grief doesn't resolve, technology as transparency |
+| Baroque Strategies | Figured bass, doctrine of affects, counterpoint without teleology |
+| Layer Architecture | Routing, compression, individual layer documentation |
+| Configuration | All tunable parameters with defaults |
+
 ### [Site Layer](./site/)
 Marketing website styling, typography, content management.
 
