@@ -124,16 +124,6 @@ The system maintains strict separation between three layers, each with distinct 
 
 ## Documentation Structure
 
-### [Sonification System](./SONIFICATION.md)
-Complete audio architecture documentation.
-
-| Topic | Description |
-|-------|-------------|
-| Philosophical Foundations | Inductive principle, grief doesn't resolve, technology as transparency |
-| Baroque Strategies | Figured bass, doctrine of affects, counterpoint without teleology |
-| Layer Architecture | Routing, compression, individual layer documentation |
-| Configuration | All tunable parameters with defaults |
-
 ### [Site Layer](./site/)
 Marketing website styling, typography, content management.
 
@@ -170,6 +160,16 @@ Visualization, particles, connection lines, shaders.
 | [Shader System](./presentation/SHADER-SYSTEM.md) | Cosmic background, foreground layers, breathing |
 | [Timing System](./presentation/TIMING-SYSTEM.md) | Message display timing, cluster transitions |
 | [Configuration Reference](./presentation/CONFIGURATION.md) | Presentation layer configuration options |
+
+### [Sonification System](./SONIFICATION.md)
+Complete audio architecture documentation.
+
+| Topic | Description |
+|-------|-------------|
+| Philosophical Foundations | Inductive principle, grief doesn't resolve, technology as transparency |
+| Baroque Strategies | Figured bass, doctrine of affects, counterpoint without teleology |
+| Layer Architecture | Routing, compression, individual layer documentation |
+| Configuration | All tunable parameters with defaults |
 
 ---
 
@@ -250,4 +250,4 @@ Throughout this documentation, you'll see explanations of *why* specific impleme
 
 ---
 
-*Documentation last updated: November 2025*
+*Documentation last updated: December 2025*
