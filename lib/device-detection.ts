@@ -2,10 +2,10 @@
  * Device Detection & Performance Configuration
  * 
  * Provides device-aware settings for optimal performance across
- * desktop, tablet, and mobile devices.
+ * desktop, tablet, and mobile devices, including GPU capability detection.
  */
 
-export type DeviceType = 'desktop' | 'tablet' | 'mobile'
+export type DeviceType = 'desktop' | 'desktop-low' | 'tablet' | 'mobile'
 
 export interface DeviceConfig {
   type: DeviceType
@@ -28,6 +28,110 @@ export interface DeviceConfig {
   // Performance
   targetFPS: number
   adaptiveQuality: boolean
+  
+  // GPU info (for debugging)
+  gpuRenderer?: string
+}
+
+// Cache GPU detection result
+let cachedGPUTier: 'high' | 'low' | null = null
+let cachedGPURenderer: string | null = null
+
+/**
+ * Detect GPU capability using WebGL renderer string
+ * Returns 'low' for integrated Intel/AMD graphics, 'high' for discrete GPUs and Apple Silicon
+ */
+function detectGPUTier(): { tier: 'high' | 'low', renderer: string } {
+  if (cachedGPUTier !== null) {
+    return { tier: cachedGPUTier, renderer: cachedGPURenderer || 'unknown' }
+  }
+  
+  if (typeof window === 'undefined' || typeof document === 'undefined') {
+    return { tier: 'high', renderer: 'unknown (SSR)' }
+  }
+  
+  try {
+    const canvas = document.createElement('canvas')
+    const gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl')
+    
+    if (!gl) {
+      console.warn('[GPU Detection] WebGL not available, assuming low-tier')
+      cachedGPUTier = 'low'
+      cachedGPURenderer = 'WebGL unavailable'
+      return { tier: 'low', renderer: 'WebGL unavailable' }
+    }
+    
+    const debugInfo = (gl as WebGLRenderingContext).getExtension('WEBGL_debug_renderer_info')
+    
+    if (!debugInfo) {
+      console.warn('[GPU Detection] Debug info unavailable, assuming high-tier')
+      cachedGPUTier = 'high'
+      cachedGPURenderer = 'unknown (no debug info)'
+      return { tier: 'high', renderer: 'unknown (no debug info)' }
+    }
+    
+    const renderer = (gl as WebGLRenderingContext).getParameter(debugInfo.UNMASKED_RENDERER_WEBGL) as string
+    cachedGPURenderer = renderer
+    
+    console.log('[GPU Detection] Renderer:', renderer)
+    
+    // Patterns that indicate low-power integrated graphics
+    const lowPowerPatterns = [
+      /intel.*uhd/i,           // Intel UHD Graphics (common in iMacs, laptops)
+      /intel.*hd/i,            // Intel HD Graphics (older)
+      /intel.*iris/i,          // Intel Iris (better but still integrated)
+      /intel.*graphics/i,      // Generic Intel graphics
+      /amd.*radeon.*vega/i,    // AMD integrated Vega (in Ryzen APUs)
+      /amd.*radeon.*graphics/i, // AMD integrated graphics
+      /mali/i,                 // ARM Mali (mobile/embedded)
+      /adreno/i,               // Qualcomm Adreno (mobile)
+      /powervr/i,              // PowerVR (mobile/embedded)
+      /swiftshader/i,          // Software renderer (very slow)
+      /llvmpipe/i,             // Software renderer
+      /softpipe/i,             // Software renderer
+    ]
+    
+    // Patterns that indicate high-power GPUs (check these first)
+    const highPowerPatterns = [
+      /apple.*m[1-9]/i,        // Apple Silicon (M1, M2, M3, etc.)
+      /nvidia.*geforce/i,      // NVIDIA GeForce
+      /nvidia.*rtx/i,          // NVIDIA RTX
+      /nvidia.*gtx/i,          // NVIDIA GTX
+      /nvidia.*quadro/i,       // NVIDIA Quadro
+      /amd.*radeon.*rx/i,      // AMD Radeon RX (discrete)
+      /amd.*radeon.*pro/i,     // AMD Radeon Pro
+      /radeon.*[5-7][0-9]{3}/i, // AMD discrete cards (5000-7000 series)
+    ]
+    
+    // Check high-power first (more specific matches)
+    for (const pattern of highPowerPatterns) {
+      if (pattern.test(renderer)) {
+        console.log('[GPU Detection] High-power GPU detected')
+        cachedGPUTier = 'high'
+        return { tier: 'high', renderer }
+      }
+    }
+    
+    // Check low-power patterns
+    for (const pattern of lowPowerPatterns) {
+      if (pattern.test(renderer)) {
+        console.log('[GPU Detection] Low-power GPU detected')
+        cachedGPUTier = 'low'
+        return { tier: 'low', renderer }
+      }
+    }
+    
+    // Default to high if we can't identify (benefit of the doubt)
+    console.log('[GPU Detection] Unknown GPU, defaulting to high-tier')
+    cachedGPUTier = 'high'
+    return { tier: 'high', renderer }
+    
+  } catch (error) {
+    console.error('[GPU Detection] Error:', error)
+    cachedGPUTier = 'high'
+    cachedGPURenderer = 'error'
+    return { tier: 'high', renderer: 'error' }
+  }
 }
 
 /**
@@ -52,6 +156,12 @@ export function detectDeviceType(): DeviceType {
     return 'tablet'
   }
   
+  // Desktop - check GPU capability
+  const { tier } = detectGPUTier()
+  if (tier === 'low') {
+    return 'desktop-low'
+  }
+  
   return 'desktop'
 }
 
@@ -74,6 +184,7 @@ export function isTablet(): boolean {
  */
 export function getDeviceConfig(): DeviceConfig {
   const deviceType = detectDeviceType()
+  const { renderer } = detectGPUTier()
   
   switch (deviceType) {
     case 'mobile':
@@ -98,6 +209,7 @@ export function getDeviceConfig(): DeviceConfig {
         // Lower target, enable adaptive
         targetFPS: 30,
         adaptiveQuality: true,
+        gpuRenderer: renderer,
       }
       
     case 'tablet':
@@ -121,6 +233,34 @@ export function getDeviceConfig(): DeviceConfig {
         
         targetFPS: 45,
         adaptiveQuality: true,
+        gpuRenderer: renderer,
+      }
+    
+    case 'desktop-low':
+      // Low-power desktop (Intel integrated graphics, etc.)
+      // Better than mobile (bigger screen, more CPU) but can't handle full GPU load
+      return {
+        type: 'desktop-low',
+        
+        // Reduced particle count
+        workingSetSize: 150,
+        maxParticleSize: 5,
+        minParticleSize: 1.5,
+        
+        // Disable foreground fog (biggest GPU saver)
+        enableForegroundFog: false,
+        shaderQuality: 'medium',
+        shaderSpeedMultiplier: 1.0,
+        
+        // Standard line widths
+        connectionLineWidth: 1,
+        focusConnectionLineWidth: 3,
+        connectionOpacityMultiplier: 1.0,
+        
+        // Target 30fps, enable adaptive
+        targetFPS: 30,
+        adaptiveQuality: true,
+        gpuRenderer: renderer,
       }
       
     case 'desktop':
@@ -143,7 +283,19 @@ export function getDeviceConfig(): DeviceConfig {
         
         targetFPS: 60,
         adaptiveQuality: false,
+        gpuRenderer: renderer,
       }
+  }
+}
+
+/**
+ * Force a specific quality tier (useful for testing or user preference)
+ * Pass null to reset to auto-detection
+ */
+export function overrideGPUTier(tier: 'high' | 'low' | null): void {
+  cachedGPUTier = tier
+  if (tier === null) {
+    cachedGPURenderer = null
   }
 }
 

@@ -259,6 +259,7 @@ function ConnectionsTest() {
     particles: 0,
     connections: 0,
     deviceType: 'detecting' as string,
+    gpuRenderer: '' as string,
     memoryMB: 0,
     memoryLimit: 0
   })
@@ -1208,6 +1209,7 @@ function ConnectionsTest() {
               particles: particles.size,
               connections: connections.length,
               deviceType: deviceConfig.type,
+              gpuRenderer: deviceConfig.gpuRenderer || 'unknown',
               memoryMB,
               memoryLimit
             })
@@ -1333,11 +1335,12 @@ function ConnectionsTest() {
         <div className="space-y-1">
           <div className="text-lg font-bold text-purple-400">CONNECTIONS</div>
           <div className="text-xs text-gray-400 uppercase">{debugInfo.deviceType}</div>
+          <div className="text-xs text-gray-500 truncate max-w-[200px]" title={debugInfo.gpuRenderer}>{debugInfo.gpuRenderer}</div>
           <div className="mt-2 pt-2 border-t border-white/20">
             <div>Particles: {debugInfo.particles}</div>
             <div>Connections: {debugInfo.connections}</div>
             <div className="mt-2 pt-2 border-t border-white/10">
-              <div>FPS: <span className={debugInfo.fps >= (debugInfo.deviceType === 'mobile' ? 25 : 55) ? 'text-green-400' : 'text-yellow-400'}>{debugInfo.fps}</span></div>
+              <div>FPS: <span className={debugInfo.fps >= (debugInfo.deviceType === 'mobile' || debugInfo.deviceType === 'desktop-low' ? 25 : 55) ? 'text-green-400' : 'text-yellow-400'}>{debugInfo.fps}</span></div>
               <div>Render: <span className={debugInfo.renderTime < 16 ? 'text-green-400' : 'text-yellow-400'}>{debugInfo.renderTime}ms</span></div>
               {debugInfo.memoryLimit > 0 && (
                 <div className="mt-2 pt-2 border-t border-white/10">
