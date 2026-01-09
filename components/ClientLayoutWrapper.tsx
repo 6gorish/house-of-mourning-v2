@@ -106,7 +106,7 @@ export default function ClientLayoutWrapper({
           {/* Copyright */}
           <div className="mt-16 pt-8 border-t border-stone-200 text-center">
             <p className="text-xs md:text-sm text-stone-500 tracking-wide uppercase">
-              © 2025 Two Flaneurs. All rights reserved.
+              © {new Date().getFullYear()} Two Flaneurs. All rights reserved.
             </p>
           </div>
         </div>

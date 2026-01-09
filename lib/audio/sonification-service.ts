@@ -90,7 +90,8 @@ export class SonificationService {
     try {
       const audio = new Audio(silentDataURI)
       audio.volume = 0.01  // Nearly silent, but not zero (some browsers ignore zero)
-      audio.playsInline = true
+      // playsInline exists on HTMLMediaElement at runtime but not in TS types for Audio
+      ;(audio as any).playsInline = true
       
       // Play and immediately pause - just need to trigger the audio session switch
       await audio.play()
