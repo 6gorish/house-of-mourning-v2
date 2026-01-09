@@ -77,6 +77,33 @@ export class SonificationService {
     this.config = config
   }
 
+  /**
+   * iOS silent switch workaround: playing an HTML5 Audio element
+   * switches the audio session from "ambient" (respects silent switch)
+   * to "playback" (ignores silent switch, like YouTube/Spotify).
+   * Must be called from a user gesture context.
+   */
+  private async unlockIOSAudio(): Promise<void> {
+    // Tiny silent MP3 - just enough to trigger media playback mode
+    const silentDataURI = 'data:audio/mp3;base64,SUQzBAAAAAAAI1RTU0UAAAAPAAADTGF2ZjU4Ljc2LjEwMAAAAAAAAAAAAAAA/+M4wAAAAAAAAAAAAEluZm8AAAAPAAAAAwAAAbAAqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq1dXV1dXV1dXV1dXV1dXV1dXV1dXV1dXV1dXV1dXV1dXV////////////////////////////////////////////AAAAAExhdmM1OC4xMwAAAAAAAAAAAAAAACQAAAAAAAAAAaC2Kn9XAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA/+M4wAAAAANIAAAAAExBTUUzLjEwMFVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV/+M4wDsAAANIAAAAAFVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV'
+
+    try {
+      const audio = new Audio(silentDataURI)
+      audio.volume = 0.01  // Nearly silent, but not zero (some browsers ignore zero)
+      audio.playsInline = true
+      
+      // Play and immediately pause - just need to trigger the audio session switch
+      await audio.play()
+      audio.pause()
+      audio.remove()
+      
+      console.log('[SonificationService] iOS audio unlocked')
+    } catch (error) {
+      // Non-fatal - will just respect silent switch on iOS
+      console.warn('[SonificationService] iOS audio unlock failed (non-fatal):', error)
+    }
+  }
+
   async initialize(): Promise<void> {
     if (this.state !== 'uninitialized') {
       console.warn('[SonificationService] Already initialized')
@@ -84,6 +111,9 @@ export class SonificationService {
     }
 
     try {
+      // iOS silent switch override: play silent audio to switch to media playback mode
+      await this.unlockIOSAudio()
+
       this.context = new AudioContext()
       this.state = 'suspended'
 
